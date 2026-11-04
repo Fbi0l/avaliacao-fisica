@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- Segurança: só scripts do próprio site e do CDN abaixo (com integridade SRI); conexão só com o Supabase do projeto (preenchido ao configurar). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0d6b5c">
+  <title>Avaliação Física</title>
+  <link rel="icon" href="assets/icone.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icone-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Avaliação">
+  <link rel="stylesheet" href="styles.css?v=0.1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+  <script src="calculos.js?v=0.1.0" defer></script>
+  <script src="app.js?v=0.1.0" defer></script>
+</head>
+<body>
+  <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
+
+  <div id="loginView" class="entrada hidden">
+    <form id="loginForm" class="entrada-card" novalidate>
+      <img src="assets/icone.svg" alt="" width="44" height="44" class="entrada-logo">
+      <h1>Avaliação Física</h1>
+      <p class="muted">Avaliações, evolução e acompanhamento dos seus alunos.</p>
+      <label>E-mail<input id="email" type="email" required autocomplete="username" inputmode="email"></label>
+      <label>Senha<input id="senha" type="password" required autocomplete="current-password"></label>
+      <button id="loginBtn" class="btn primary full" type="submit">Entrar</button>
+      <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
+      <small>Alunos entram pelo link de convite enviado pelo personal.</small>
+    </form>
+    <footer class="rodape">Versão 0.1.0</footer>
+  </div>
+
+  <div id="conviteView" class="entrada hidden">
+    <form id="conviteForm" class="entrada-card largo" novalidate>
+      <img src="assets/icone.svg" alt="" width="44" height="44" class="entrada-logo">
+      <h1 id="convTitulo">Seu acesso à avaliação</h1>
+      <p id="convSub" class="muted">Conferindo o convite…</p>
+      <div id="convCampos" class="hidden">
+        <section class="termo" aria-labelledby="termoTitulo">
+          <h2 id="termoTitulo">Termo de uso dos seus dados</h2>
+          <p>Para acompanhar sua evolução, este app guarda as medidas das suas avaliações físicas: peso, altura, perímetros, dobras cutâneas, testes de força, frequência cardíaca, pressão arterial e, se você levar, exames de sangue. A lei (LGPD) considera esses dados de saúde e sensíveis.</p>
+          <ul>
+            <li><strong>Para quê:</strong> só para seu personal avaliar você, planejar seu treino e mostrar sua evolução.</li>
+            <li><strong>Quem vê:</strong> você e o seu personal. Ninguém mais tem acesso pelo app, e nada é vendido ou compartilhado.</li>
+            <li><strong>Onde ficam:</strong> num banco de dados protegido, com cópia de segurança criptografada.</li>
+            <li><strong>Seus direitos:</strong> pedir correção ou a exclusão completa dos seus dados a qualquer momento, falando com seu personal.</li>
+          </ul>
+          <p class="muted pequeno">Versão do termo: <span id="termoVersao"></span></p>
+        </section>
+        <label class="check"><input id="convAceite" type="checkbox"><span>Li e aceito o termo de uso dos meus dados</span></label>
+        <label>E-mail<input id="convEmail" type="email" autocomplete="username" inputmode="email" required></label>
+        <label>Crie uma senha<input id="convSenha" type="password" autocomplete="new-password" minlength="10" required></label>
+        <label>Repita a senha<input id="convSenha2" type="password" autocomplete="new-password" minlength="10" required></label>
+        <small>Pelo menos 10 caracteres. Dica: junte três ou quatro palavras com hífen. Senhas que já vazaram na internet são recusadas.</small>
+        <button id="convBtn" class="btn primary full" type="submit">Criar meu acesso</button>
+      </div>
+      <p id="convMsg" class="msg" role="alert" aria-live="assertive"></p>
+      <button id="convIrLogin" class="btn full hidden" type="button">Ir para o login</button>
+    </form>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <header class="topo">
+      <div class="marca"><img src="assets/icone.svg" alt="" width="34" height="34"><div><strong>Avaliação Física</strong><small id="quemSou"></small></div></div>
+      <div class="topo-acoes">
+        <button id="perfilBtn" class="btn ghost hidden" type="button">Meus dados</button>
+        <button id="sairBtn" class="btn ghost" type="button">Sair</button>
+      </div>
+    </header>
+    <p id="msgGlobal" class="msg" role="status" aria-live="polite"></p>
+    <div id="areaPersonal" class="shell hidden">
+      <aside class="lateral" aria-label="Alunos">
+        <div class="lateral-topo"><h2>Alunos <span id="qtdAlunos" class="selo"></span></h2><button id="novoAlunoBtn" class="btn" type="button">+ Novo</button></div>
+        <label class="sr-only" for="buscaAluno">Buscar aluno</label>
+        <input id="buscaAluno" class="busca" type="search" placeholder="Buscar aluno" maxlength="60" autocomplete="off">
+        <div id="listaAlunos" class="lista-alunos"></div>
+      </aside>
+      <main id="principal" class="principal" tabindex="-1"></main>
+    </div>
+    <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
+    <footer class="rodape">Versão 0.1.0</footer>
+  </div>
+
+  <dialog id="alunoDialog" class="dialogo" aria-labelledby="alunoDlgTitulo">
+    <form id="alunoForm" class="dialogo-form" novalidate>
+      <div class="dialogo-topo"><h2 id="alunoDlgTitulo">Novo aluno</h2><button class="btn ghost icone" type="button" data-fechar aria-label="Fechar">✕</button></div>
+      <label>Nome completo *<input id="alNome" maxlength="80" autocomplete="off" required></label>
+      <div class="linha-campos">
+        <label>Sexo *<select id="alSexo"><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
+        <label>Nascimento *<input id="alNasc" type="date" required></label>
+      </div>
+      <label>Etnia * <span class="muted fraco">(usada na fórmula de massa muscular)</span><select id="alEtnia"><option value="branca">Branca</option><option value="negra">Negra</option><option value="asiatica">Asiática</option></select></label>
+      <label>Contato <span class="muted fraco">(opcional)</span><input id="alContato" maxlength="120" autocomplete="off" placeholder="Telefone ou e-mail"></label>
+      <p id="alunoMsg" class="msg" role="alert"></p>
+      <div class="dialogo-acoes">
+        <button id="alExcluir" class="btn perigo-leve hidden" type="button">Excluir aluno e dados</button>
+        <span class="espaco"></span>
+        <button class="btn" type="button" data-fechar>Cancelar</button>
+        <button id="alSalvar" class="btn primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="perfilDialog" class="dialogo dialogo-p" aria-labelledby="perfilTitulo">
+    <form id="perfilForm" class="dialogo-form" novalidate>
+      <div class="dialogo-topo"><h2 id="perfilTitulo">Meus dados</h2><button class="btn ghost icone" type="button" data-fechar aria-label="Fechar">✕</button></div>
+      <label>Seu nome *<input id="pfNome" maxlength="80" autocomplete="name" required></label>
+      <label>CREF <span class="muted fraco">(opcional)</span><input id="pfCref" maxlength="30" autocomplete="off"></label>
+      <p class="muted pequeno">Seus alunos veem seu nome no app.</p>
+      <p id="perfilMsg" class="msg" role="alert"></p>
+      <div class="dialogo-acoes"><span class="espaco"></span><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="conviteDialog" class="dialogo dialogo-p" aria-labelledby="convDlgTitulo">
+    <div class="dialogo-form">
+      <div class="dialogo-topo"><h2 id="convDlgTitulo">Convite para o aluno</h2><button class="btn ghost icone" type="button" data-fechar aria-label="Fechar">✕</button></div>
+      <p id="convDlgTexto" class="muted"></p>
+      <div id="convLinkCaixa" class="link-convite hidden"><input id="convLink" readonly aria-label="Link do convite"><button id="convCopiar" class="btn" type="button">Copiar</button></div>
+      <p id="convDlgMsg" class="msg" role="status"></p>
+      <div class="dialogo-acoes">
+        <button id="convCancelar" class="btn perigo-leve hidden" type="button">Cancelar convite</button>
+        <span class="espaco"></span>
+        <button id="convCompartilhar" class="btn hidden" type="button">Compartilhar</button>
+        <button id="convGerar" class="btn primary" type="button">Gerar link</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="confirmaDialog" class="dialogo dialogo-p" aria-labelledby="confTitulo">
+    <div class="dialogo-form">
+      <h2 id="confTitulo">Confirmar</h2>
+      <p id="confTexto" class="muted"></p>
+      <div class="dialogo-acoes"><span class="espaco"></span><button id="confNao" class="btn" type="button">Cancelar</button><button id="confSim" class="btn perigo" type="button">Excluir</button></div>
+    </div>
+  </dialog>
+</body>
+</html>
