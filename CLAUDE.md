@@ -6,7 +6,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 
 ## Onde fica cada coisa
 
-- Site: https://fbi0l.github.io/avaliacao-fisica/ (depois de ligar o GitHub Pages; publica a cada envio para `main`).
+- Site: https://fbi0l.github.io/avaliacao-fisica/ (GitHub Pages ligado em 04/11/2026; publica a cada envio para `main`).
 - Supabase: AINDA NÃO CRIADO. Será um projeto próprio (o plano gratuito da conta principal já tem 2 projetos ativos). Ao criar: preencher `SUPABASE_URL` e `SUPABASE_KEY` (chave publicável) no `app.js` e o `connect-src` da CSP no `index.html`.
 - `calculos.js`: fórmulas da avaliação (funções puras). `app.js`: telas e regras do formulário. `index.html`, `styles.css`, `sw.js`, `manifest.webmanifest`.
 - `supabase/migrations/`: banco. O nome do arquivo deve usar a versão que o Supabase registrar ao aplicar.
