@@ -92,4 +92,37 @@ assert.equal(A.sentido(-2, -1), 'bom'); assert.equal(A.sentido(2, -1), 'ruim'); 
   assert.deepEqual(A.faltasDoCalculo({ dobras: dob }).gordura, []);
   assert.deepEqual(A.faltasDoCalculo({ dobras: dob, equacao_gordura: 'petroski' }).gordura, ['dobra panturrilha']);
 }
-console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação e aviso de medidas faltando.');
+// Guia de primeiro acesso: aparece uma vez; passos completos para personal e aluno
+assert.equal(A.deveMostrarTutorial({}, null), true);
+assert.equal(A.deveMostrarTutorial({ tutorial_visto: true }, null), false, 'já viu em outro aparelho');
+assert.equal(A.deveMostrarTutorial({}, '1'), false, 'já viu neste aparelho');
+assert.equal(A.deveMostrarTutorial({ tutorial_visto: 'true' }, null), true, 'só o valor verdadeiro conta');
+assert.ok(A.PASSOS_TUTORIAL_PERSONAL.length >= 5 && A.PASSOS_TUTORIAL_ALUNO.length >= 3);
+assert.ok(A.PASSOS_TUTORIAL_ALUNO.length < A.PASSOS_TUTORIAL_PERSONAL.length, 'o do aluno é o básico');
+for (const p of [...A.PASSOS_TUTORIAL_PERSONAL, ...A.PASSOS_TUTORIAL_ALUNO])
+  assert.ok(p.icone && p.titulo && p.texto && p.itens.length >= 1 && p.itens.every(t => typeof t === 'string' && t.length), `passo ${p.titulo}`);
+const htmlTut = require('fs').readFileSync('index.html', 'utf8');
+for (const id of ['ajudaBtn', 'tutorialDialog', 'tutTitulo', 'tutTexto', 'tutItens', 'tutPontos', 'tutProximo', 'tutVoltar', 'tutPular', 'tutFechar', 'tutContagem', 'tutIcone'])
+  assert.ok(htmlTut.includes(`id="${id}"`), `index.html tem #${id}`);
+
+// Aluno de exemplo: só no primeiro acesso, marcado como exemplo, 3 avaliações completas e válidas
+assert.equal(A.deveCriarExemplo({}, 0), true);
+assert.equal(A.deveCriarExemplo({ exemplo_criado: true }, 0), false, 'apagou o exemplo: não volta');
+assert.equal(A.deveCriarExemplo({}, 2), false, 'quem já tem alunos não ganha exemplo');
+assert.equal(A.ALUNO_EXEMPLO.exemplo, true); assert.match(A.ALUNO_EXEMPLO.nome, /exemplo/);
+{
+  const C = require('../calculos.js');
+  const avs = A.avaliacoesExemplo('id-x');
+  assert.equal(avs.length, 3); assert.ok(avs.every(v => v.aluno_id === 'id-x'));
+  for (const v of avs) {
+    const ida = A.montarAvaliacao(A.rascunhoDe(v), '2026-11-05');
+    assert.deepEqual(ida.erros, [], `exemplo ${v.data} passa nas mesmas faixas do banco`);
+    const c = C.calcular(A.ALUNO_EXEMPLO, v);
+    for (const k of ['gordura', 'massaMuscular', 'somaDobras', 'supino1RM', 'legPress1RM']) assert.ok(Number.isFinite(c[k]), `${v.data}: ${k}`);
+    assert.ok(c.pressao && c.classeLegPress && c.classeSupino, 'todas as classificações aparecem');
+  }
+  const [g0, , g2] = avs.map(v => C.calcular(A.ALUNO_EXEMPLO, v).gordura);
+  assert.ok(g2 < g0, 'o exemplo mostra evolução (gordura caindo)');
+  assert.ok(avs[0].dobras.triceps.length === 2, 'mostra dobra com 2 medidas e média');
+}
+console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação, aviso de medidas faltando, guia de primeiro acesso e aluno de exemplo.');

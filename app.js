@@ -145,8 +145,84 @@ function faltasDoCalculo(av) {
 }
 const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`;
 
+/* ---------- Tutorial de primeiro acesso ---------- */
+const PASSOS_TUTORIAL_PERSONAL = [
+  { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
+    texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
+    itens: ['Criamos um aluno de exemplo, a Mariana, com 3 avaliações fictícias, para você ver todas as telas funcionando.', 'Seus alunos e avaliações são só seus: nenhum outro personal vê nada.'] },
+  { icone: '◉', titulo: '1. Seus alunos',
+    texto: 'A lista de alunos fica ao lado (no celular, no topo). Toque num aluno para abrir a ficha dele.',
+    itens: ['“+ Novo” cadastra um aluno: nome, sexo, nascimento e etnia (usada no cálculo da massa muscular).', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
+  { icone: '＋', titulo: '2. Nova avaliação em 6 etapas',
+    texto: 'Básico, exames, perímetros, dobras, força e parecer. Só peso e altura são obrigatórios.',
+    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).'] },
+  { icone: '▤', titulo: '3. O resultado completo',
+    texto: 'Cada avaliação vira uma ficha com tudo calculado.',
+    itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.'] },
+  { icone: '↗', titulo: '4. Evolução e comparação',
+    texto: 'Na ficha do aluno, as abas mostram a evolução em gráficos e comparam quaisquer duas avaliações.',
+    itens: ['Verde quando a mudança vai na direção desejada (por exemplo, gordura caindo).', 'Abra a Mariana: ela já tem 3 avaliações para você ver os gráficos.'] },
+  { icone: '✉', titulo: '5. Convide o aluno',
+    texto: 'Na ficha do aluno, “Convidar” gera um link de uso único para ele.',
+    itens: ['O aluno aceita o termo de uso dos dados (LGPD), cria uma senha e vê só a própria evolução, em linguagem simples.', 'O aluno de exemplo não recebe convite. Quando não precisar mais dele, apague em “Editar”.'] },
+  { icone: '?', titulo: 'Pronto para começar',
+    texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
+    itens: ['Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
+];
+const PASSOS_TUTORIAL_ALUNO = [
+  { icone: '✦', titulo: 'Bem-vindo!',
+    texto: 'Aqui você acompanha as avaliações físicas que o seu personal registra.',
+    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.'] },
+  { icone: '▤', titulo: 'Seus números',
+    texto: 'No topo aparecem os principais resultados da última avaliação: gordura, massa muscular e peso.',
+    itens: ['As setas mostram o que mudou desde a primeira avaliação.', 'Verde quer dizer que mudou na direção boa.'] },
+  { icone: '↗', titulo: 'Evolução e recado',
+    texto: 'Mais abaixo ficam os gráficos de evolução e o recado do seu personal.',
+    itens: ['A cada nova avaliação, tudo se atualiza sozinho.'] },
+  { icone: '?', titulo: 'Dúvidas e seus dados',
+    texto: 'Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.',
+    itens: ['Para rever este guia, toque em “?” no topo.'] }
+];
+/** Mostra o guia sozinho só se a pessoa ainda não o viu (no perfil dela ou neste aparelho). */
+function deveMostrarTutorial(metadados, vistoNoAparelho) {
+  return !(metadados && metadados.tutorial_visto === true) && vistoNoAparelho !== '1';
+}
+
+/* ---------- Aluno de exemplo (primeiro acesso do personal) ---------- */
+const ALUNO_EXEMPLO = { nome: 'Mariana Costa (exemplo)', sexo: 'F', nascimento: '1994-03-12', etnia: 'branca', contato: null, exemplo: true };
+const PERIM_EX = ['bracoD', 'bracoE', 'antD', 'antE', 'torax', 'cintura', 'abdomen', 'quadril', 'coxaSupD', 'coxaSupE', 'coxaMedD', 'coxaMedE', 'pantD', 'pantE'];
+const DOBRA_EX = ['triceps', 'subesc', 'biceps', 'iliaca', 'supraesp', 'abdominal', 'coxa', 'panturrilha'];
+/** As 3 avaliações fictícias da Mariana (junho, agosto e outubro de 2026), prontas para gravar. */
+function avaliacoesExemplo(alunoId) {
+  const av = (data, peso, fc, pas, pad, ex, per, dob, sup, leg, parecer, equacao = 'faulkner') => ({
+    aluno_id: alunoId, data, peso, altura: 1.65, fc_repouso: fc, pas, pad,
+    glicose: ex[0], triglicerideos: ex[1], ldl: ex[2], hdl: ex[3],
+    perimetros: Object.fromEntries(PERIM_EX.map((k, i) => [k, per[i]])),
+    dobras: Object.fromEntries(DOBRA_EX.map((k, i) => [k, [dob[i][0], dob[i][1] ?? null].filter((x, j) => j === 0 || x != null)])),
+    forca: { supino: { carga: sup[0], reps: sup[1] }, leg_press: { carga: leg[0], reps: leg[1] } },
+    equacao_gordura: equacao, parecer });
+  return [
+    av('2026-06-08', 66.4, 74, 124, 82, [96, 142, 128, 52],
+      [28.4, 28.0, 23.6, 23.3, 88.0, 74.5, 82.0, 102.5, 59.5, 59.0, 55.0, 54.6, 36.0, 35.8],
+      [[26, 26.4], [22, 21.6], [11], [26, 26.2], [15], [30, 30.4], [31], [19]], [30, 8], [120, 10],
+      'Primeira avaliação. Boa disposição e técnica razoável nos testes.\nPrioridade: reduzir gordura central e ganhar força de membros superiores.\nPróximos passos: treino 4x por semana e cardio leve 2x.'),
+    av('2026-08-10', 64.9, 70, 120, 80, [92, 128, 121, 55],
+      [28.6, 28.3, 23.8, 23.5, 87.0, 72.8, 80.1, 101.0, 59.6, 59.3, 55.3, 55.0, 36.2, 36.0],
+      [[24], [20], [10], [23], [13], [27], [29], [18]], [34, 8], [140, 10],
+      'Boa evolução em dois meses: menos gordura central e mais força no supino.\nManter a frequência e aumentar a carga do leg press aos poucos.'),
+    av('2026-10-14', 63.8, 66, 116, 76, [89, 112, 115, 58],
+      [29.0, 28.6, 24.0, 23.7, 86.5, 71.0, 78.5, 100.0, 59.8, 59.5, 55.6, 55.2, 36.4, 36.2],
+      [[22], [19], [9], [21], [12], [24], [27], [17]], [38, 8], [160, 10],
+      'Excelente adesão. Gordura em queda constante e massa muscular subindo.\nFC de repouso melhorou (66 bpm). Próxima fase: hipertrofia de membros inferiores.')
+  ];
+}
+/** Cria o exemplo só para quem acabou de chegar: sem nenhum aluno e sem ter ganhado o exemplo antes. */
+function deveCriarExemplo(metadados, qtdAlunos) {
+  return qtdAlunos === 0 && !(metadados && metadados.exemplo_criado === true);
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }
@@ -204,7 +280,7 @@ function iniciar() {
   async function carregarPersonal() {
     const [p, a, r] = await Promise.all([
       db.from('personais').select('usuario_id,nome,cref').eq('usuario_id', est.usuario.id).single(),
-      db.from('alunos').select('id,nome,sexo,nascimento,etnia,contato,usuario_id').order('nome'),
+      db.from('alunos').select('id,nome,sexo,nascimento,etnia,contato,usuario_id,exemplo').order('exemplo').order('nome'),
       db.from('avaliacoes').select('aluno_id,data')
     ]);
     if (p.error || a.error || r.error) throw p.error || a.error || r.error;
@@ -231,7 +307,7 @@ function iniciar() {
       const r = est.resumo.get(a.id);
       return h('button', { class: 'aluno-btn', type: 'button', 'aria-current': String(a.id === atual), onclick: () => ir('aluno-' + a.id) },
         h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(a.nome)),
-        h('span', null, h('strong', null, a.nome), h('small', null, r ? `${r.n} aval. · última ${dataBR(r.ultima)}` : 'Sem avaliação')));
+        h('span', null, h('strong', null, a.nome), h('small', null, (a.exemplo ? 'Exemplo · ' : '') + (r ? `${r.n} aval. · última ${dataBR(r.ultima)}` : 'Sem avaliação'))));
     }));
   }
 
@@ -273,10 +349,10 @@ function iniciar() {
     const cab = h('section', { class: 'card' }, h('div', { class: 'perfil' },
       h('div', null, h('h2', null, a.nome), h('div', { class: 'meta' },
         h('span', null, a.sexo === 'F' ? 'Feminino' : 'Masculino'), h('span', { class: 'num' }, `${idade} anos`), h('span', null, K.ROTULO_ETNIA[a.etnia]),
-        a.usuario_id ? h('span', { class: 'chip bom' }, 'Acessa o app') : h('span', { class: 'chip' }, 'Sem acesso ao app'))),
+        a.exemplo ? h('span', { class: 'chip destaque' }, 'Aluno de exemplo: dados fictícios') : a.usuario_id ? h('span', { class: 'chip bom' }, 'Acessa o app') : h('span', { class: 'chip' }, 'Sem acesso ao app'))),
       h('div', { class: 'linha' },
         h('button', { class: 'btn', type: 'button', onclick: () => abrirAluno(a) }, 'Editar'),
-        h('button', { class: 'btn', type: 'button', onclick: () => abrirConvite(a) }, a.usuario_id ? 'Acesso do aluno' : 'Convidar'),
+        a.exemplo ? null : h('button', { class: 'btn', type: 'button', onclick: () => abrirConvite(a) }, a.usuario_id ? 'Acesso do aluno' : 'Convidar'),
         h('button', { class: 'btn primary', type: 'button', onclick: () => ir('nova-' + a.id) }, '+ Nova avaliação'))));
     const abas = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções do aluno' },
       [['avaliacoes', 'Avaliações', ''], ['evolucao', 'Evolução', '-evolucao'], ['comparar', 'Comparar', '-comparar']].map(([k, t, suf]) =>
@@ -661,6 +737,62 @@ function iniciar() {
       h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`));
   }
 
+  /* ----- Guia de primeiro acesso e aluno de exemplo ----- */
+  const tut = { passos: [], passo: 0 };
+  const chaveTutorial = id => 'tutorialVisto:' + id;
+  function desenharPasso() {
+    const total = tut.passos.length, p = tut.passos[tut.passo], ultimo = tut.passo === total - 1;
+    $('tutContagem').textContent = `Passo ${tut.passo + 1} de ${total}`;
+    $('tutIcone').textContent = p.icone; $('tutTitulo').textContent = p.titulo; $('tutTexto').textContent = p.texto;
+    $('tutItens').replaceChildren(...p.itens.map(t => h('li', null, t)));
+    $('tutPontos').replaceChildren(...tut.passos.map((q, i) => h('button', { class: 'tut-ponto', type: 'button', 'aria-label': `Ir para o passo ${i + 1}: ${q.titulo}`, 'aria-current': i === tut.passo ? 'step' : null, onclick: () => { tut.passo = i; desenharPasso(); } })));
+    $('tutVoltar').classList.toggle('hidden', tut.passo === 0);
+    $('tutPular').classList.toggle('hidden', ultimo);
+    const exemplo = est.papel === 'personal' && est.alunos.find(a => a.exemplo);
+    $('tutProximo').textContent = ultimo ? (exemplo ? 'Ver o aluno de exemplo' : 'Começar') : 'Próximo';
+  }
+  function abrirTutorial() {
+    if ($('tutorialDialog').open || !est.papel) return;
+    tut.passos = est.papel === 'aluno' ? PASSOS_TUTORIAL_ALUNO : PASSOS_TUTORIAL_PERSONAL; tut.passo = 0;
+    desenharPasso(); $('tutorialDialog').showModal(); $('tutProximo').focus();
+  }
+  function marcarTutorialVisto() {
+    if (!est.usuario) return;
+    try { localStorage.setItem(chaveTutorial(est.usuario.id), '1'); } catch (_) { /* sem armazenamento */ }
+    if (est.usuario.user_metadata?.tutorial_visto !== true) db.auth.updateUser({ data: { tutorial_visto: true } }).catch(() => { /* fica só neste aparelho */ });
+  }
+  function talvezMostrarTutorial() {
+    let visto = null;
+    try { visto = localStorage.getItem(chaveTutorial(est.usuario.id)); } catch (_) { /* sem armazenamento */ }
+    if (deveMostrarTutorial(est.usuario.user_metadata, visto)) abrirTutorial();
+  }
+  $('ajudaBtn').addEventListener('click', abrirTutorial);
+  $('tutProximo').addEventListener('click', () => {
+    if (tut.passo < tut.passos.length - 1) { tut.passo++; desenharPasso(); $('tutProximo').focus(); return; }
+    const exemplo = est.papel === 'personal' && est.alunos.find(a => a.exemplo);
+    $('tutorialDialog').close();
+    if (exemplo) ir('aluno-' + exemplo.id + '-evolucao');
+  });
+  $('tutVoltar').addEventListener('click', () => { if (tut.passo > 0) { tut.passo--; desenharPasso(); } });
+  ['tutPular', 'tutFechar'].forEach(id => $(id).addEventListener('click', () => $('tutorialDialog').close()));
+  $('tutorialDialog').addEventListener('keydown', ev => {
+    if (ev.target.closest?.('.tut-pontos')) return;
+    if (ev.key === 'ArrowRight' && tut.passo < tut.passos.length - 1) { tut.passo++; desenharPasso(); }
+    if (ev.key === 'ArrowLeft' && tut.passo > 0) { tut.passo--; desenharPasso(); }
+  });
+  // Fechou de qualquer jeito (Começar, Pular, ✕ ou Esc): conta como visto.
+  $('tutorialDialog').addEventListener('close', () => { if (est.usuario) marcarTutorialVisto(); });
+
+  /** Primeiro acesso de um personal novo: cria a Mariana de exemplo com 3 avaliações. Falhou no meio? Desfaz. */
+  async function criarAlunoExemplo() {
+    const { data: al, error } = await db.from('alunos').insert({ ...ALUNO_EXEMPLO }).select('id').single();
+    if (error || !al) return false;
+    const { error: e2 } = await db.from('avaliacoes').insert(avaliacoesExemplo(al.id));
+    if (e2) { await db.from('alunos').delete().eq('id', al.id); return false; }
+    db.auth.updateUser({ data: { exemplo_criado: true } }).catch(() => { /* sem a marca, só cria de novo se ele ficar sem alunos */ });
+    return true;
+  }
+
   /* ----- Entrar, sair e convite ----- */
   async function entrar(sessao) {
     est.usuario = sessao.user; est.avs.clear();
@@ -673,12 +805,17 @@ function iniciar() {
     $('personaisBtn').classList.add('hidden');
     if (papel === 'personal') db.rpc('sou_administrador').then(({ data }) => $('personaisBtn').classList.toggle('hidden', data !== true)).catch(() => {});
     try {
-      if (papel === 'personal') { await carregarPersonal(); rotear(); }
-      else if (papel === 'aluno') await telaDoAluno();
+      if (papel === 'personal') {
+        await carregarPersonal();
+        if (deveCriarExemplo(est.usuario.user_metadata, est.alunos.length) && await criarAlunoExemplo()) await carregarPersonal();
+        rotear(); talvezMostrarTutorial();
+      }
+      else if (papel === 'aluno') { await telaDoAluno(); talvezMostrarTutorial(); }
       else { $('areaAluno').classList.remove('hidden'); $('areaAluno').replaceChildren(h('section', { class: 'card' }, h('h2', null, 'Acesso sem ficha'), h('p', { class: 'sub' }, 'Este login não está ligado a nenhuma ficha de aluno. Peça um novo convite ao seu personal.'))); }
     } catch (e) { aviso('msgGlobal', erroBanco(e)); }
   }
   function sair() {
+    Object.assign(est, { papel: null, usuario: null }); // antes de fechar: fechar o guia ao sair não conta como visto
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     Object.assign(est, { papel: null, usuario: null, personal: null, alunos: [], rascunho: null, rascunhoChave: null });
     est.avs.clear(); $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();

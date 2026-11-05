@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=0.3.0">
+  <link rel="stylesheet" href="styles.css?v=0.4.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="calculos.js?v=0.3.0" defer></script>
-  <script src="app.js?v=0.3.0" defer></script>
+  <script src="calculos.js?v=0.4.0" defer></script>
+  <script src="app.js?v=0.4.0" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -34,7 +34,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 0.3.0</footer>
+    <footer class="rodape">Versão 0.4.0</footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -82,6 +82,7 @@
     <header class="topo">
       <div class="marca"><img src="assets/icone.svg" alt="" width="34" height="34"><div><strong>Avaliação Física</strong><small id="quemSou"></small></div></div>
       <div class="topo-acoes">
+        <button id="ajudaBtn" class="btn ghost icone" type="button" aria-label="Como usar o app" title="Como usar o app">?</button>
         <button id="personaisBtn" class="btn ghost hidden" type="button">Personais</button>
         <button id="perfilBtn" class="btn ghost hidden" type="button">Meus dados</button>
         <button id="sairBtn" class="btn ghost" type="button">Sair</button>
@@ -98,7 +99,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 0.3.0</footer>
+    <footer class="rodape">Versão 0.4.0</footer>
   </div>
 
   <dialog id="alunoDialog" class="dialogo" aria-labelledby="alunoDlgTitulo">
@@ -130,6 +131,23 @@
       <p id="perfilMsg" class="msg" role="alert"></p>
       <div class="dialogo-acoes"><span class="espaco"></span><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
     </form>
+  </dialog>
+
+  <dialog id="tutorialDialog" class="dialogo dialogo-tutorial" aria-labelledby="tutTitulo" aria-describedby="tutTexto">
+    <div class="dialogo-form">
+      <div class="dialogo-topo"><span id="tutContagem" class="tut-contagem" aria-live="polite"></span><button id="tutFechar" class="btn ghost icone" type="button" aria-label="Fechar o guia">✕</button></div>
+      <span id="tutIcone" class="tut-icone" aria-hidden="true"></span>
+      <h2 id="tutTitulo"></h2>
+      <p id="tutTexto" class="tut-texto"></p>
+      <ul id="tutItens" class="tut-itens"></ul>
+      <div id="tutPontos" class="tut-pontos" role="group" aria-label="Passos do guia"></div>
+      <div class="dialogo-acoes tut-acoes">
+        <button id="tutPular" class="btn ghost" type="button">Pular</button>
+        <span class="espaco"></span>
+        <button id="tutVoltar" class="btn" type="button">Voltar</button>
+        <button id="tutProximo" class="btn primary" type="button">Próximo</button>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="personaisDialog" class="dialogo dialogo-p" aria-labelledby="persTitulo">

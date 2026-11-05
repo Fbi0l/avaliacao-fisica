@@ -117,6 +117,13 @@ confere "convite cancelado não cancela de novo" "$(como authenticated $P1 "sele
 confere "outro personal não cancela convite" "$(como authenticated $P2 "select public.cancelar_convite_personal('$ID2')")" "f"
 recusa "cadastro não lê avaliações nem com convite de personal" "$(q -d $B -c "begin; set local role service_role; select count(*) from public.avaliacoes; commit;" 2>&1 | tail -1)"
 
+# Aluno de exemplo: o personal cria com exemplo = true; não recebe convite.
+EX="$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento, exemplo) values ('Mariana Costa (exemplo)','F','1994-03-12', true) returning id")"
+[[ "$EX" =~ ^[0-9a-f-]{36}$ ]] && ok "personal cria o aluno de exemplo" || erro "aluno de exemplo" "$EX"
+recusa "aluno de exemplo não recebe convite" "$(como authenticated $P1 "select codigo from public.criar_convite_aluno('$EX')")"
+confere "aluno comum começa sem a marca de exemplo" "$(q -d $B -c "select exemplo from public.alunos where id = '$ALUNA'")" "f"
+confere "personal apaga o aluno de exemplo" "$(como authenticated $P1 "select public.excluir_aluno('$EX')")" "t"
+
 # Exclusão (LGPD): some tudo, inclusive o login da aluna; o personal continua.
 confere "personal apaga a aluna" "$(como authenticated $P1 "select public.excluir_aluno('$ALUNA')")" "t"
 confere "avaliações apagadas junto" "$(q -d $B -c 'select count(*) from public.avaliacoes')" "0"

@@ -36,6 +36,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - Leg press: tabela do ACSM (1998), aprovada pelo dono e publicada em 05/11/2026 (0.2.0). Feita em leg press de cadeira; no 45° superestima (o app avisa).
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
 - Convite de novos personais: feito na 0.3.0 (pedido do dono em 05/11/2026: um professor da faculdade vai testar como personal). Só o administrador (`personais.admin`, o primeiro personal) gera convites; o novo personal tem alunos próprios e separados. Ainda falta: o administrador ver/desativar personais e excluir um personal com todos os dados.
+- Guia de primeiro acesso (personal e aluno) e aluno de exemplo: feitos na 0.4.0 (`PASSOS_TUTORIAL_*`, `ALUNO_EXEMPLO`/`avaliacoesExemplo` no `app.js`; `alunos.exemplo` no banco). Mudou uma tela ou um passo do fluxo? Atualize o guia junto.
 - Etapa 2: fichas de treino e periodização.
 
 ## Versão

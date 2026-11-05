@@ -2,6 +2,14 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.4.0 — Guia de primeiro acesso e aluno de exemplo
+
+- **Guia para o personal** (7 passos curtos) no primeiro acesso: alunos, nova avaliação em 6 etapas, resultado completo, evolução e comparação, convite do aluno e dicas finais. No último passo, o botão leva direto à evolução do aluno de exemplo.
+- **Aluno de exemplo**: todo personal novo (sem nenhum aluno) ganha a "Mariana Costa (exemplo)", com 3 avaliações fictícias de junho a outubro de 2026, para ver todas as tabelas, classificações e gráficos funcionando. Ela aparece com a etiqueta "Aluno de exemplo: dados fictícios", não recebe convite (o banco recusa) e pode ser apagada em "Editar". Apagada, não volta.
+- **Guia básico para o aluno** (4 passos): o que ele vê, como ler as setas e as cores, evolução e recado do personal, e com quem falar sobre os dados.
+- O guia aparece uma vez por pessoa (marcado no perfil e no aparelho) e o botão **"?"** no topo reabre quando quiser.
+- Banco: coluna `exemplo` em `alunos` (migração `aluno_exemplo`).
+
 ## Versão 0.3.0 — Convite de novos personais
 
 - **Botão "Personais"** no topo, só para o administrador (o personal que criou o projeto): gera um link de convite de personal, com um campo "Para quem?" só para você lembrar (a pessoa convidada não vê essa anotação). O link vale por 3 dias e funciona uma vez; no máximo 10 pendentes ao mesmo tempo. A lista mostra cada convite (aguardando, aceito por quem, cancelado ou vencido) e deixa cancelar os pendentes.
