@@ -242,3 +242,14 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 .tut-ponto[aria-current="step"]::after{width:22px;background:var(--accent)}
 @media (prefers-reduced-motion:reduce){.tut-ponto::after{transition:none}}
 @media (max-width:760px){.dialogo-tutorial{width:100vw;max-width:100vw}.tut-acoes .espaco{display:none}.tut-acoes{flex-wrap:nowrap}.tut-acoes>.btn{flex:1}}
+
+/* Celular: o topo ganha duas linhas (marca em cima, botões embaixo) para nada passar da largura da tela */
+@media (max-width:600px){
+  .topo{flex-wrap:wrap;row-gap:8px;padding-top:10px}
+  .marca{flex:1 1 100%;min-width:0}
+  .marca strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .marca small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topo-acoes{flex:1 1 100%;justify-content:space-between;gap:6px}
+  .topo-acoes .btn{flex:1 1 auto;min-height:44px;padding-left:8px;padding-right:8px}
+  .topo-acoes .btn.icone{flex:0 0 44px;width:44px;height:44px}
+}

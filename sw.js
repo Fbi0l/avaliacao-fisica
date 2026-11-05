@@ -3,9 +3,9 @@
    - NUNCA guarda nada do banco (login, alunos, avaliações): esses pedidos passam direto.
    - Rede primeiro: com internet, usa sempre a versão mais nova publicada. */
 'use strict';
-const VERSAO = 'avaliacao-v0.4.0';
+const VERSAO = 'avaliacao-v0.4.1';
 const ARQUIVOS = [
-  './', './index.html', './app.js?v=0.4.0', './calculos.js?v=0.4.0', './styles.css?v=0.4.0',
+  './', './index.html', './app.js?v=0.4.1', './calculos.js?v=0.4.1', './styles.css?v=0.4.1',
   './manifest.webmanifest', './assets/icone.svg', './assets/icone-192.png', './assets/icone-512.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js'
 ];
