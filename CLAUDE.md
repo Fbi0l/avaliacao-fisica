@@ -2,7 +2,7 @@
 
 App para o personal trainer avaliar alunos e acompanhar a evolução; o aluno vê os próprios resultados. Site estático (HTML, CSS e JavaScript puros, sem build) com Supabase para banco, login e regras de acesso, no GitHub Pages, instalável no celular. Mesmo padrão do app `financeiro-pessoal`. Responda sempre em português do Brasil, em linguagem simples: o dono não é programador.
 
-Nome do app provisório. Identidade visual e design definitivos ficam para depois.
+Nome do app provisório. Identidade visual e design definitivos ficam para depois (base em `docs/design/`).
 
 ## Onde fica cada coisa
 
@@ -12,6 +12,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - `supabase/migrations/`: banco. O nome do arquivo deve usar a versão que o Supabase registrar ao aplicar.
 - `supabase/functions/registrar-aluno/`: cadastro do aluno pelo convite (aceite do termo LGPD). Publicar com verificação de JWT desligada (confere tudo por conta própria).
 - Proposta e decisões: documento "Sistema de Avaliação Física — Proposta" (Claude Docs). Protótipo navegável: artifact "Avaliação Física".
+- Novo design: `docs/design/` (análise das referências Bluefit e Sky Fit, 3 direções visuais com cores e fontes, JPG e telas). Ainda não escolhido nem aplicado ao app; leia `docs/design/README.md` antes de mexer no visual.
 
 ## Modelo
 
