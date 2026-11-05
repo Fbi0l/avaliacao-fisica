@@ -35,7 +35,8 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - % de gordura: Faulkner ou Petroski (1995) à escolha em cada avaliação (`equacao_gordura`), feito na 0.2.0. Usamos a versão de Petroski com as mesmas 4 dobras nos dois sexos (subescapular, tríceps, suprailíaca, panturrilha) e peso/estatura nas mulheres; o coeficiente da idade feminina (0,00026073) aparece como 0,0002073 em uma das fontes: revisar com o personal.
 - Leg press: tabela do ACSM (1998), aprovada pelo dono e publicada em 05/11/2026 (0.2.0). Feita em leg press de cadeira; no 45° superestima (o app avisa).
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
-- Etapa 2: fichas de treino e periodização. Etapa 3: vários personais.
+- PRÓXIMO (pedido do dono em 05/11/2026): **convite de novos personais** (etapa 3 adiantada). Motivo: um professor da faculdade do dono vai analisar e testar o app como personal. Ideia: o personal administrador (dono) gera um link de convite de personal (uso único, prazo, só hash no banco, como o do aluno); quem aceita vira personal com seus próprios alunos, totalmente separado (as regras por `personal_id` já garantem). Falta: tabela/funções de convite de personal, tela no app, função de cadastro (ou estender `registrar-aluno`), testes de banco "personal A não vê nada do B" com dois personais reais, e aviso de novidade. Até lá, o gatilho "primeiro usuário vira personal" segue valendo e o cadastro aberto continua desligado.
+- Etapa 2: fichas de treino e periodização.
 
 ## Versão
 
