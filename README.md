@@ -13,4 +13,4 @@ App para o personal trainer registrar avaliações físicas, acompanhar a evolu�
 - **Correções em relação à planilha original:** faixa "adequado" de gordura que só valia para um valor exato, massa adiposa misturando % e kg, leg press usando a tabela do supino, Phantom de massas sem o ajuste ao cubo, faixas sem classificação ("FALSO") e 1RM limitado a 10 repetições.
 - Segurança como no Financeiro: regras de acesso por usuário no banco, convite guardado só como hash, senhas vazadas recusadas, saída automática após 30 minutos sem uso, só a chave publicável no site.
 
-Ainda não publicado: falta criar o projeto no Supabase e ligar o GitHub Pages.
+Publicado em 05/11/2026: banco no projeto Supabase `avaliacao-fisica` (São Paulo), função de cadastro do aluno e site no GitHub Pages.

@@ -14,5 +14,5 @@ create function auth.uid() returns uuid language sql stable as $f$ select nullif
 grant usage on schema auth to anon, authenticated;
 grant usage on schema public to anon, authenticated;
 grant usage on schema public to service_role;
--- No Supabase, a service_role (usada so no servidor) tem acesso total as tabelas do esquema public.
-alter default privileges in schema public grant all on tables to service_role;
+-- Projeto criado com "Automatically expose new tables" desligado: nenhum papel ganha acesso sozinho;
+-- as migracoes dao a service_role (usada so no servidor) so o que a funcao de cadastro precisa.

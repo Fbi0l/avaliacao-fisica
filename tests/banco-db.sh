@@ -21,6 +21,11 @@ confere() { [[ "$2" == "$3" ]] && ok "$1" || erro "$1" "esperado '$3', veio '$2'
 recusa() { [[ "$2" == *ERROR* || "$2" == *DETAIL* || "$2" == "" || "$2" == "0" ]] && ok "$1" || erro "$1" "deveria recusar, veio '$2'"; }
 
 confere "primeiro usuário vira o personal" "$(q -d $B -c 'select usuario_id from public.personais')" "$P1"
+# Função de cadastro (service_role): exatamente o que ela usa, e nada além.
+confere "cadastro lê o convite" "$(q -d $B -c "begin; set local role service_role; select count(*) >= 0 from public.convites_aluno; commit;" 2>&1 | tail -1)" "t"
+confere "cadastro lê o nome do personal" "$(q -d $B -c "begin; set local role service_role; select count(*) > 0 from public.personais; commit;" 2>&1 | tail -1)" "t"
+recusa "cadastro não lê avaliações" "$(q -d $B -c "begin; set local role service_role; select count(*) from public.avaliacoes; commit;" 2>&1 | tail -1)"
+recusa "cadastro não apaga alunos" "$(q -d $B -c "begin; set local role service_role; delete from public.alunos; commit;" 2>&1 | tail -1)"
 confere "papel do personal" "$(como authenticated $P1 'select public.meu_papel()')" "personal"
 confere "usuário sem cadastro não tem papel" "$(como authenticated $P2 "select coalesce(public.meu_papel(), 'nenhum')")" "nenhum"
 

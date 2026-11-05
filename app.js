@@ -2,9 +2,9 @@
 /* Avaliação Física — telas e lógica. Regras do projeto: nada de HTML montado a partir de dados
    (só createElement/textContent), CSP sem inline, chave publicável apenas. Ver CLAUDE.md. */
 
-// Preenchido quando o projeto do Supabase for criado (endereço e chave PUBLICÁVEL, nunca a secreta).
-const SUPABASE_URL = '';
-const SUPABASE_KEY = '';
+// Projeto Supabase "avaliacao-fisica" (São Paulo). Só o endereço e a chave PUBLICÁVEL; nunca a secreta.
+const SUPABASE_URL = 'https://rsgbuvjrkrrybzoacjrh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_x1nqjAFBALSgKIXoaDxrXg_pBHxArki';
 const TERMO_VERSAO = '2026-11-04'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 

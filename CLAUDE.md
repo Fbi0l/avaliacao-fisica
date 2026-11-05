@@ -7,7 +7,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 ## Onde fica cada coisa
 
 - Site: https://fbi0l.github.io/avaliacao-fisica/ (GitHub Pages ligado em 04/11/2026; publica a cada envio para `main`).
-- Supabase: AINDA NÃO CRIADO. Será um projeto próprio (o plano gratuito da conta principal já tem 2 projetos ativos). Ao criar: preencher `SUPABASE_URL` e `SUPABASE_KEY` (chave publicável) no `app.js` e o `connect-src` da CSP no `index.html`.
+- Supabase: projeto `avaliacao-fisica`, ref `rsgbuvjrkrrybzoacjrh` (São Paulo, plano gratuito), criado em 05/11/2026 numa conta separada do dono (organização "Avaliacao Fisica"); a conta principal (fabioluan090@gmail.com) é Developer nela. Criado com "Automatically expose new tables" DESLIGADO e "automatic RLS" ligado: toda tabela nova precisa de `grant` explícito, inclusive para `service_role` (a função de cadastro só tem o mínimo, ver migração `permissoes_funcao_cadastro`). O conector do Supabase no Claude fica autorizado para UMA organização por vez: para mexer no Financeiro ou no Inventário, reautorizar escolhendo a organização "Fabio Luan".
 - `calculos.js`: fórmulas da avaliação (funções puras). `app.js`: telas e regras do formulário. `index.html`, `styles.css`, `sw.js`, `manifest.webmanifest`.
 - `supabase/migrations/`: banco. O nome do arquivo deve usar a versão que o Supabase registrar ao aplicar.
 - `supabase/functions/registrar-aluno/`: cadastro do aluno pelo convite (aceite do termo LGPD). Publicar com verificação de JWT desligada (confere tudo por conta própria).
@@ -30,9 +30,9 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 
 ## Pendências e decisões em aberto
 
-- Criar o projeto Supabase (conta nova do dono, convidando a conta atual como Developer), aplicar a migração, publicar a função, preencher a configuração. Ligar o backup como no Financeiro.
-- Equação de % de gordura: hoje Faulkner; Petroski (1995) é alternativa (mulheres exigem a dobra axilar média). Decidir com o personal.
-- Tabela de força do leg press: a definir (hoje mostra "Tabela a definir").
+- Ligar o backup como no Financeiro. Desligar o cadastro aberto no Supabase (Authentication → Sign In / Providers → "Allow new users to sign up") depois que o personal criar a conta: o convite do aluno cria contas pela chave de serviço e não depende dele. A senha do banco não foi guardada na criação: gerar uma nova em Project Settings → Database quando for preciso (backup).
+- Equação de % de gordura (decidido em 05/11): oferecer Faulkner e Petroski (1995) e o personal escolhe em cada avaliação (Petroski feminino pede a dobra axilar média). A implementar.
+- Tabela de força do leg press (decidido em 05/11): propor uma tabela da literatura por sexo e idade para o dono aprovar.
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
 - Etapa 2: fichas de treino e periodização. Etapa 3: vários personais.
 
