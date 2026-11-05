@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.1.1 — Aviso de medidas faltando
+
+- **No resultado**, quando faltam medidas, cada cartão diz o que precisa para calcular (por exemplo, "falta: dobra tríceps, dobra subescapular…") em vez de só "—", e um aviso no topo leva direto para completar a avaliação.
+- **Ao salvar** uma avaliação sem as dobras ou perímetros da gordura (Faulkner) ou da massa muscular (Lee), o app avisa o que não vai ser calculado. Tocando em salvar de novo, ela é salva assim mesmo.
+
 ## Versão 0.1.0 — Etapa 1: avaliação e evolução
 
 - **Alunos:** cadastro com sexo, nascimento e etnia (usada na fórmula de massa muscular), busca e edição.

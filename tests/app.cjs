@@ -55,4 +55,15 @@ assert.deepEqual(ida.erros, []); assert.deepEqual(ida.registro, registro);
 
 // Sentido da mudança
 assert.equal(A.sentido(-2, -1), 'bom'); assert.equal(A.sentido(2, -1), 'ruim'); assert.equal(A.sentido(2, 0), 'neutro'); assert.equal(A.sentido(0.01, 1), 'neutro');
-console.log('App aprovado: convite, inatividade, rotas e formulário da avaliação.');
+// O que falta para calcular gordura e massa muscular (aviso ao salvar e no resultado)
+{
+  const f0 = A.faltasDoCalculo({ perimetros: { bracoD: 24, coxaMedD: 34, pantD: 20 }, dobras: {} });
+  assert.deepEqual(f0.gordura, ['dobra tríceps', 'dobra subescapular', 'dobra suprailíaca', 'dobra abdominal']);
+  assert.deepEqual(f0.muscular, ['dobra tríceps', 'dobra coxa', 'dobra panturrilha']);
+  const cheio = { perimetros: { bracoD: 24, coxaMedD: 34, pantD: 20 }, dobras: { triceps: [10], subesc: [12, 12.4], iliaca: [14], abdominal: [18], coxa: [20], panturrilha: [9] } };
+  assert.deepEqual(A.faltasDoCalculo(cheio), { gordura: [], muscular: [] });
+  assert.deepEqual(A.faltasDoCalculo({ ...cheio, perimetros: { bracoD: 24 } }).muscular, ['Coxa média D', 'Panturrilha D']);
+  assert.deepEqual(A.faltasDoCalculo(undefined).gordura.length, 4, 'avaliação vazia');
+  assert.equal(A.listaFalta(['a']), 'a'); assert.equal(A.listaFalta(['a', 'b']), 'a e b'); assert.equal(A.listaFalta(['a', 'b', 'c']), 'a, b e c');
+}
+console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação e aviso de medidas faltando.');

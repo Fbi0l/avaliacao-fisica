@@ -109,8 +109,25 @@ function montarAvaliacao(r, hoje = hojeISO()) {
 /** Diferença com sentido: 'bom', 'ruim' ou 'neutro', conforme a direção desejada (1 sobe, -1 desce, 0 tanto faz). */
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
+
+/** O que falta na avaliação para calcular gordura (Faulkner) e massa muscular (Lee). Devolve os nomes, para avisar o personal. */
+const PRECISA = {
+  gordura: { dobras: ['triceps', 'subesc', 'iliaca', 'abdominal'], perimetros: [] },
+  muscular: { dobras: ['triceps', 'coxa', 'panturrilha'], perimetros: ['bracoD', 'coxaMedD', 'pantD'] }
+};
+function faltasDoCalculo(av) {
+  const nome = (lista, k) => (lista.find(([c]) => c === k) || [k, k])[1];
+  const tem = x => x != null && Number.isFinite(Number(Array.isArray(x) ? x[0] : x));
+  const falta = req => [
+    ...req.perimetros.filter(k => !tem(av?.perimetros?.[k])).map(k => nome(K.PERIMETROS, k)),
+    ...req.dobras.filter(k => !tem(av?.dobras?.[k])).map(k => 'dobra ' + nome(K.DOBRAS, k).toLowerCase())
+  ];
+  return { gordura: falta(PRECISA.gordura), muscular: falta(PRECISA.muscular) };
+}
+const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`;
+
 if (typeof module !== 'undefined') {
-  module.exports = { TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }
@@ -265,6 +282,12 @@ function iniciar() {
     const c = K.calcular(a, v);
     const regua = z => h('td', null, h('div', { class: 'regua', title: `Escore-Z ${fmt(z, 2)}` }, (() => { const i = h('i'); i.style.left = `${Math.max(0, Math.min(100, (z + 3) / 6 * 100))}%`; return i; })()));
     const kpi = (k, valor, un, extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, valor, un ? h('small', null, un) : null), extra);
+    const falta = faltasDoCalculo(v);
+    const faltaTexto = nomes => h('span', { class: 'sub' }, `Para calcular, falta: ${listaFalta(nomes)}.`);
+    const faltaAviso = av => (falta.gordura.length || falta.muscular.length)
+      ? h('p', { class: 'aviso nao-imprimir' }, 'Algumas medidas não foram registradas, então parte dos resultados não aparece. ',
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('editar-' + av.id) }, 'Completar a avaliação ›'))
+      : null;
     const forca = (nome, f, rm, rel, classe) => h('tr', null, h('td', null, nome), h('td', { class: 'n' }, f ? `${fmt(f.carga, 0)} × ${f.reps}` : '—'), h('td', { class: 'n' }, fmt(rm)), h('td', { class: 'n' }, fmt(rel, 2)), h('td', null, classe));
     return [
       h('div', { class: 'linha nao-imprimir' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('aluno-' + a.id) }, `‹ ${a.nome}`)),
@@ -274,11 +297,12 @@ function iniciar() {
             h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => excluirAvaliacao(a, v) }, 'Excluir'),
             h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Imprimir / PDF'),
             h('button', { class: 'btn primary', type: 'button', onclick: () => ir('editar-' + v.id) }, 'Editar'))),
+        faltaAviso(v),
         h('div', { class: 'kpis' },
-          kpi('Gordura', fmt(c.gordura), c.gordura == null ? null : '%', chip(c.classeGordura)),
-          kpi('Massa muscular', fmt(c.massaMuscular), c.massaMuscular == null ? null : 'kg', chip(c.classeMuscular)),
-          kpi('Massa gorda / magra', fmt(c.massaGorda), c.massaGorda == null ? null : `/ ${fmt(c.massaMagra)} kg`),
-          kpi('Σ 8 dobras', fmt(c.somaDobras, 0), c.somaDobras == null ? null : 'mm', h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)))),
+          kpi('Gordura', fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)),
+          kpi('Massa muscular', fmt(c.massaMuscular), c.massaMuscular == null ? null : 'kg', c.massaMuscular == null ? faltaTexto(falta.muscular) : chip(c.classeMuscular)),
+          kpi('Massa gorda / magra', fmt(c.massaGorda), c.massaGorda == null ? null : `/ ${fmt(c.massaMagra)} kg`, c.massaGorda == null ? h('span', { class: 'sub' }, 'Sai junto com a gordura.') : null),
+          kpi('Σ 8 dobras', fmt(c.somaDobras, 0), c.somaDobras == null ? null : 'mm', c.somaDobras == null ? h('span', { class: 'sub' }, 'Nenhuma dobra registrada.') : h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)))),
       h('div', { class: 'dois' },
         h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Local'), h('th', { class: 'n' }, 'Medida'), h('th', null, 'Proporção'), h('th'))),
@@ -406,9 +430,20 @@ function iniciar() {
         h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Massa muscular'), h('span', { class: 'v' }, fmt(c.massaMuscular), c.massaMuscular == null ? null : h('small', null, 'kg')), c.massaMuscular == null ? h('span', { class: 'sub' }, 'Precisa de braço D, coxa média D, panturrilha D e as dobras deles.') : chip(c.classeMuscular)));
     }
     const irPasso = n => { est.passo = n; rotear(); };
+    let confirmouIncompleta = false;
     async function salvar(botao) {
       const { registro, erros } = montarAvaliacao(r);
       if (erros.length) { erro.textContent = erros.join(' '); return; }
+      // Sem as medidas da gordura ou da massa muscular, avisa uma vez antes de salvar.
+      const f = faltasDoCalculo(registro);
+      if (!confirmouIncompleta && (f.gordura.length || f.muscular.length)) {
+        const partes = [];
+        if (f.gordura.length) partes.push(`a gordura (falta ${listaFalta(f.gordura)})`);
+        if (f.muscular.length) partes.push(`a massa muscular (falta ${listaFalta(f.muscular)})`);
+        erro.textContent = `Atenção: sem essas medidas não dá para calcular ${partes.join(' nem ')}. Toque em salvar de novo para salvar assim, ou complete na etapa Dobras ou Perímetros.`;
+        confirmouIncompleta = true;
+        return;
+      }
       botao.disabled = true; erro.textContent = '';
       const q = existente ? db.from('avaliacoes').update(registro).eq('id', existente.id).select().single()
         : db.from('avaliacoes').insert({ ...registro, aluno_id: a.id }).select().single();
