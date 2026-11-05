@@ -128,7 +128,7 @@ function classeSupino(relativa, sexo, idade) {
     Prescription, Resource Manual (1998). Limites INFERIORES de Excelente, Bom, Médio e Regular para
     20-29, 30-39, 40-49, 50-59 e 60+ anos (abaixo do último: Fraco). Menores de 20 usam a coluna 20-29.
     A tabela foi feita num leg press de cadeira (horizontal); no leg press 45° de anilhas a carga
-    costuma ser bem maior, então a classificação tende a sair acima do real. A APROVAR pelo dono (proposta de 05/11/2026). */
+    costuma ser bem maior, então a classificação tende a sair acima do real. Aprovada pelo dono em 05/11/2026. */
 const LEG_PRESS = {
   M: [[2.08, 1.88, 1.76, 1.66, 1.56], [2.00, 1.80, 1.70, 1.60, 1.50], [1.83, 1.63, 1.56, 1.46, 1.37], [1.65, 1.55, 1.50, 1.40, 1.31]],
   F: [[1.63, 1.42, 1.32, 1.26, 1.15], [1.54, 1.35, 1.26, 1.13, 1.08], [1.35, 1.20, 1.12, 0.99, 0.92], [1.26, 1.13, 1.06, 0.86, 0.85]]
