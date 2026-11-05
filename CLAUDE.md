@@ -10,13 +10,13 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - Supabase: projeto `avaliacao-fisica`, ref `rsgbuvjrkrrybzoacjrh` (São Paulo, plano gratuito), criado em 05/11/2026 numa conta separada do dono (organização "Avaliacao Fisica"); a conta principal (fabioluan090@gmail.com) é Developer nela. Criado com "Automatically expose new tables" DESLIGADO e "automatic RLS" ligado: toda tabela nova precisa de `grant` explícito, inclusive para `service_role` (a função de cadastro só tem o mínimo, ver migração `permissoes_funcao_cadastro`). O conector do Supabase no Claude fica autorizado para UMA organização por vez: para mexer no Financeiro ou no Inventário, reautorizar escolhendo a organização "Fabio Luan".
 - `calculos.js`: fórmulas da avaliação (funções puras). `app.js`: telas e regras do formulário. `index.html`, `styles.css`, `sw.js`, `manifest.webmanifest`.
 - `supabase/migrations/`: banco. O nome do arquivo deve usar a versão que o Supabase registrar ao aplicar.
-- `supabase/functions/registrar-aluno/`: cadastro do aluno pelo convite (aceite do termo LGPD). Publicar com verificação de JWT desligada (confere tudo por conta própria).
+- `supabase/functions/registrar-aluno/`: cadastro pelo convite: do aluno (aceite do termo LGPD) e, com `tipo: 'personal'`, de um novo personal (termo do personal, `TERMO_PERSONAL_VERSAO` igual no `app.js`). Publicar com verificação de JWT desligada (confere tudo por conta própria).
 - Proposta e decisões: documento "Sistema de Avaliação Física — Proposta" (Claude Docs). Protótipo navegável: artifact "Avaliação Física".
 - Novo design: `docs/design/` (análise das referências Bluefit e Sky Fit, 3 direções visuais com cores e fontes, JPG e telas). Ainda não escolhido nem aplicado ao app; leia `docs/design/README.md` antes de mexer no visual.
 
 ## Modelo
 
-- O primeiro usuário do projeto vira o personal (gatilho). Alunos entram só por convite do personal e só leem.
+- O primeiro usuário do projeto vira o personal ADMINISTRADOR (gatilho). Novos personais entram só por convite do administrador (`convites_personal`); alunos, só por convite do personal deles, e só leem.
 - Preparado para vários personais: tudo tem `personal_id`; as regras de acesso separam os personais. A etapa 3 vai acrescentar o convite de novos personais.
 - O banco guarda só o que é medido; os resultados são calculados no app, então corrigir uma fórmula vale para avaliações antigas.
 - Dobras: `{chave: [1ª medida, 2ª medida]}` em mm. `equacao_gordura`: 'faulkner' (padrão) ou 'petroski'. Perímetros: `{chave: cm}`. Força: `{supino|leg_press: {carga, reps}}`.
@@ -35,7 +35,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - % de gordura: Faulkner ou Petroski (1995) à escolha em cada avaliação (`equacao_gordura`), feito na 0.2.0. Usamos a versão de Petroski com as mesmas 4 dobras nos dois sexos (subescapular, tríceps, suprailíaca, panturrilha) e peso/estatura nas mulheres; o coeficiente da idade feminina (0,00026073) aparece como 0,0002073 em uma das fontes: revisar com o personal.
 - Leg press: tabela do ACSM (1998), aprovada pelo dono e publicada em 05/11/2026 (0.2.0). Feita em leg press de cadeira; no 45° superestima (o app avisa).
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
-- PRÓXIMO (pedido do dono em 05/11/2026): **convite de novos personais** (etapa 3 adiantada). Motivo: um professor da faculdade do dono vai analisar e testar o app como personal. Ideia: o personal administrador (dono) gera um link de convite de personal (uso único, prazo, só hash no banco, como o do aluno); quem aceita vira personal com seus próprios alunos, totalmente separado (as regras por `personal_id` já garantem). Falta: tabela/funções de convite de personal, tela no app, função de cadastro (ou estender `registrar-aluno`), testes de banco "personal A não vê nada do B" com dois personais reais, e aviso de novidade. Até lá, o gatilho "primeiro usuário vira personal" segue valendo e o cadastro aberto continua desligado.
+- Convite de novos personais: feito na 0.3.0 (pedido do dono em 05/11/2026: um professor da faculdade vai testar como personal). Só o administrador (`personais.admin`, o primeiro personal) gera convites; o novo personal tem alunos próprios e separados. Ainda falta: o administrador ver/desativar personais e excluir um personal com todos os dados.
 - Etapa 2: fichas de treino e periodização.
 
 ## Versão

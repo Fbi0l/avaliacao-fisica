@@ -1,11 +1,13 @@
 // Cadastro do aluno por convite, com banco e Auth simulados (sem rede).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { tratarCadastro, validarSenha, senhaVazada, hashCodigo, TERMO_VERSAO } from '../supabase/functions/registrar-aluno/cadastro.js';
+import { tratarCadastro, validarSenha, senhaVazada, hashCodigo, TERMO_VERSAO, TERMO_PERSONAL_VERSAO } from '../supabase/functions/registrar-aluno/cadastro.js';
 
 const sha = s => createHash('sha256').update(s).digest('hex');
 const CODIGO = 'A'.repeat(20) + '_-' + 'b9'.repeat(10) + 'x';
 assert.equal(CODIGO.length, 43);
+const CODIGO_P = 'P'.repeat(21) + '-_' + 'z7'.repeat(10);
+assert.equal(CODIGO_P.length, 43);
 assert.equal(await hashCodigo(CODIGO), sha(CODIGO), 'hash igual ao do banco (sha256 hex)');
 
 // Senhas
@@ -20,12 +22,13 @@ assert.equal(await senhaVazada('x', async () => { throw new Error('offline'); })
 const hibpLimpo = async () => ({ ok: true, text: async () => '' });
 
 // Banco simulado: tabelas como listas; update ... returning é atômico (como no Postgres).
-function ambiente({ falharCriacao = false, atraso = 0, falharConsentimento = false, alunoJaLigado = false, extraConvite = {} } = {}) {
+function ambiente({ falharCriacao = false, atraso = 0, falharConsentimento = false, alunoJaLigado = false, extraConvite = {}, falharPersonal = false, extraConvitePersonal = {} } = {}) {
   const futuro = new Date(Date.now() + 864e5).toISOString();
   const db = {
     convites_aluno: [{ id: 'c1', aluno_id: 'al1', personal_id: 'p1', codigo_hash: sha(CODIGO), usado_em: null, cancelado_em: null, expira_em: futuro, usado_por: null, ...extraConvite }],
     alunos: [{ id: 'al1', nome: 'Mariana Costa', usuario_id: alunoJaLigado ? 'outro' : null }],
     personais: [{ usuario_id: 'p1', nome: 'Fabio' }],
+    convites_personal: [{ id: 'cp1', criado_por: 'p1', rotulo: 'Prof. Carlos Silva', codigo_hash: sha(CODIGO_P), usado_em: null, cancelado_em: null, expira_em: futuro, usado_por: null, ...extraConvitePersonal }],
     consentimentos: []
   };
   const usuarios = [{ id: 'u0', email: 'ja@existe.com' }];
@@ -47,6 +50,7 @@ function ambiente({ falharCriacao = false, atraso = 0, falharConsentimento = fal
         select() { return q; }, update(v) { acao = 'update'; valores = v; return q; },
         insert(v) {
           if (tabela === 'consentimentos' && falharConsentimento) return Promise.resolve({ error: { code: '23503' } });
+          if (tabela === 'personais' && falharPersonal) return Promise.resolve({ error: { code: '23505' } });
           db[tabela].push({ ...v }); return Promise.resolve({ error: null });
         },
         eq(c, v) { filtros.push(['eq', c, v]); return q; }, is(c, v) { filtros.push(['is', c, v]); return q; }, gt(c, v) { filtros.push(['gt', c, v]); return q; },
@@ -129,4 +133,46 @@ const [a, b] = await Promise.all([rodar(pedir({ ...base, email: 'um@x.com' }), a
 assert.deepEqual([a.status, b.status].sort(), [201, 410]); assert.equal(amb.usuarios.length, 2);
 
 assert.equal((await rodar(pedir({ acao: 'apagar', codigo: CODIGO }), amb)).status, 400);
-console.log('Cadastro do aluno aprovado: código, CORS, aceite do termo, senha, ligação à ficha, desfazer em falha, uso único e corrida.');
+// ---------- Convite de PERSONAL (tipo: 'personal') ----------
+{
+  const P = { tipo: 'personal', codigo: CODIGO_P };
+  let a2 = ambiente();
+  let v = await rodar(pedir({ ...P, acao: 'verificar' }), a2);
+  assert.equal(v.status, 200); assert.equal(v.corpo.tipo, 'personal'); assert.equal(v.corpo.nome, undefined, 'a anotação do convite não vai para quem recebe'); assert.ok(!JSON.stringify(v.corpo).includes('Carlos')); assert.equal(v.corpo.convidou, 'Fabio'); assert.equal(v.corpo.termo, TERMO_PERSONAL_VERSAO);
+  assert.equal((await rodar(pedir({ ...P, acao: 'verificar', codigo: CODIGO }), a2)).status, 410, 'código de aluno não serve como convite de personal');
+  assert.equal((await rodar(pedir({ acao: 'verificar', codigo: CODIGO_P }), a2)).status, 410, 'código de personal não serve como convite de aluno');
+  const baseP = { ...P, acao: 'cadastrar', nome: '  Carlos   Silva ', email: 'Carlos@Facul.edu', senha: 'cavalo-azul-bateria', aceite: true, termo: TERMO_PERSONAL_VERSAO };
+  assert.equal((await rodar(pedir({ ...baseP, aceite: false }), a2)).corpo.codigo_erro, 'termo');
+  assert.equal((await rodar(pedir({ ...baseP, termo: TERMO_VERSAO }), a2)).corpo.codigo_erro, 'termo', 'termo do aluno não vale para o personal');
+  assert.match((await rodar(pedir({ ...baseP, nome: 'C' }), a2)).corpo.erro, /nome/);
+  assert.match((await rodar(pedir({ ...baseP, senha: 'curta' }), a2)).corpo.erro, /10 caracteres/);
+  assert.equal(a2.db.convites_personal[0].usado_em, null, 'erros de validação não gastam o convite');
+  let r2 = await rodar(pedir(baseP), a2);
+  assert.equal(r2.status, 201); assert.equal(r2.chave, 'service');
+  const novo = a2.usuarios.find(u => u.email === 'carlos@facul.edu');
+  assert.ok(novo, 'conta criada com e-mail em minúsculas');
+  const ficha = a2.db.personais.find(p => p.usuario_id === novo.id);
+  assert.deepEqual({ nome: ficha.nome, termo: ficha.termo_versao, admin: ficha.admin }, { nome: 'Carlos Silva', termo: TERMO_PERSONAL_VERSAO, admin: undefined }, 'ficha do personal sem poder de administrador');
+  assert.ok(ficha.termo_aceito_em, 'aceite registrado com data');
+  assert.equal(a2.db.convites_personal[0].usado_por, novo.id);
+  assert.equal(a2.db.alunos.length, 1, 'não mexe em alunos'); assert.equal(a2.db.consentimentos.length, 0);
+  assert.equal((await rodar(pedir({ ...baseP, email: 'outro@x.com' }), a2)).status, 410, 'uso único');
+  // E-mail que já tem conta: convite volta a valer
+  a2 = ambiente();
+  r2 = await rodar(pedir({ ...baseP, email: 'ja@existe.com' }), a2);
+  assert.equal(r2.status, 400); assert.equal(a2.db.convites_personal[0].usado_em, null);
+  // Falha ao gravar a ficha: apaga a conta e devolve o convite
+  a2 = ambiente({ falharPersonal: true });
+  r2 = await rodar(pedir(baseP), a2);
+  assert.equal(r2.status, 500); assert.equal(a2.usuarios.length, 1); assert.equal(a2.db.convites_personal[0].usado_em, null);
+  // Convite cancelado ou vencido
+  for (const extra of [{ cancelado_em: new Date().toISOString() }, { expira_em: new Date(Date.now() - 1000).toISOString() }]) {
+    a2 = ambiente({ extraConvitePersonal: extra });
+    assert.equal((await rodar(pedir({ ...P, acao: 'verificar' }), a2)).status, 410);
+  }
+  // Corrida: dois cadastros com o mesmo link, só um passa
+  a2 = ambiente({ atraso: 30 });
+  const [x, y] = await Promise.all([rodar(pedir({ ...baseP, email: 'um@x.com' }), a2), rodar(pedir({ ...baseP, email: 'dois@x.com' }), a2)]);
+  assert.deepEqual([x.status, y.status].sort(), [201, 410]);
+}
+console.log('Cadastro do aluno aprovado: código, CORS, aceite do termo, senha, ligação à ficha, desfazer em falha, uso único e corrida; convite de personal com as mesmas garantias.');

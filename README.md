@@ -2,6 +2,13 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.3.0 — Convite de novos personais
+
+- **Botão "Personais"** no topo, só para o administrador (o personal que criou o projeto): gera um link de convite de personal, com um campo "Para quem?" só para você lembrar (a pessoa convidada não vê essa anotação). O link vale por 3 dias e funciona uma vez; no máximo 10 pendentes ao mesmo tempo. A lista mostra cada convite (aguardando, aceito por quem, cancelado ou vencido) e deixa cancelar os pendentes.
+- **Quem recebe o link** lê o termo de uso para personais (cuidar dos dados dos alunos, convidar só com consentimento, atender pedidos de exclusão), informa nome, e-mail e senha, e entra como personal com **alunos próprios, totalmente separados**: nenhum personal vê nada do outro, e o novo personal não consegue se tornar administrador nem convidar outros.
+- Mesma segurança do convite do aluno: o banco guarda só o hash do código, o convite é reservado numa única operação (dois cadastros ao mesmo tempo não passam), qualquer falha apaga a conta criada e devolve o convite, e senhas vazadas são recusadas. O aceite do termo fica registrado na ficha do personal.
+- Banco: migração `convite_personal` (colunas `admin`, `termo_versao` e `termo_aceito_em` em `personais`, tabela `convites_personal` sem acesso direto pelo app e funções só para o administrador). Função `registrar-aluno` com o caminho `tipo: 'personal'`.
+
 ## Versão 0.2.0 — Duas equações de gordura, leg press e pressão baixa
 
 - **Equação do % de gordura à escolha do personal**, em cada avaliação, na etapa Dobras: **Faulkner** (tríceps, subescapular, suprailíaca e abdominal) ou **Petroski (1995)**, feita com adultos brasileiros (subescapular, tríceps, suprailíaca e panturrilha; para mulheres, também peso e altura; % pela fórmula de Siri). O resultado mostra qual equação foi usada. Avaliações antigas continuam com Faulkner.

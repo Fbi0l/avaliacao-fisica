@@ -217,3 +217,12 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
   .card{break-inside:avoid;border-color:#ccc}
   body{font-size:12px}
 }
+
+/* Convites de personal (só o administrador vê) */
+.lista-convites{list-style:none;margin:0;padding:0;display:grid}
+.lista-convites li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.lista-convites li:first-child{border-top:0}
+.lista-convites .info{flex:1;min-width:0;display:grid;gap:2px}
+.lista-convites .info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lista-convites .info small{color:var(--muted);font-size:12px}
+.lista-convites .vazio{color:var(--muted);border-top:0}

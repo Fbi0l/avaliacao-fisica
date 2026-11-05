@@ -82,6 +82,41 @@ recusa "aluna não altera a própria ficha" "$(como authenticated $AL "with x as
 recusa "aluna não cadastra outro aluno" "$(como authenticated $AL "insert into public.alunos (personal_id, nome, sexo, nascimento) values ('$P1','X','M','1990-01-01') returning id")"
 recusa "convite já usado não é gerado de novo" "$(como authenticated $P1 "select codigo from public.criar_convite_aluno('$ALUNA')")"
 
+# Convite de novos personais: só o administrador (primeiro personal) gera; quem aceita fica separado.
+confere "primeiro personal é administrador" "$(como authenticated $P1 'select public.sou_administrador()')" "t"
+confere "aluna não é administradora" "$(como authenticated $AL 'select public.sou_administrador()')" "f"
+CP="$(como authenticated $P1 "select codigo from public.criar_convite_personal('Prof. Carlos')")"
+[[ "$CP" =~ ^[A-Za-z0-9_-]{43}$ ]] && ok "administrador gera convite de personal" || erro "convite de personal" "$CP"
+HP="$(printf '%s' "$CP" | sha256sum | cut -d' ' -f1)"
+confere "banco guarda só o hash do convite de personal" "$(q -d $B -c "select count(*) from public.convites_personal where codigo_hash = '$HP'")" "1"
+recusa "aluna não gera convite de personal" "$(como authenticated $AL "select codigo from public.criar_convite_personal(null)")"
+recusa "visitante sem login não gera convite de personal" "$(como anon 00000000-0000-0000-0000-000000000000 "select codigo from public.criar_convite_personal(null)")"
+recusa "app não lê a tabela de convites de personal direto" "$(como authenticated $P1 'select count(*) from public.convites_personal')"
+confere "administrador vê o convite pendente" "$(como authenticated $P1 'select situacao from public.listar_convites_personal() limit 1')" "pendente"
+confere "aluna não vê convites de personal" "$(como authenticated $AL 'select count(*) from public.listar_convites_personal()')" "0"
+# O que a função de cadastro faz com a chave de serviço: reserva o convite, cria a ficha do personal, registra quem usou.
+q -d $B -c "begin; set local role service_role;
+  update public.convites_personal set usado_em = now() where codigo_hash = '$HP' and usado_em is null;
+  insert into public.personais (usuario_id, nome, termo_versao, termo_aceito_em) values ('$P2','Prof. Carlos','2026-11-05', now());
+  update public.convites_personal set usado_por = '$P2' where codigo_hash = '$HP'; commit;"
+confere "novo personal tem papel de personal" "$(como authenticated $P2 'select public.meu_papel()')" "personal"
+confere "novo personal não é administrador" "$(como authenticated $P2 'select public.sou_administrador()')" "f"
+recusa "novo personal não se promove a administrador" "$(como authenticated $P2 "with x as (update public.personais set admin = true where usuario_id = '$P2' returning 1) select count(*) from x")"
+recusa "novo personal não convida personais" "$(como authenticated $P2 "select codigo from public.criar_convite_personal(null)")"
+confere "novo personal começa sem alunos (não vê os do outro)" "$(como authenticated $P2 'select count(*) from public.alunos')" "0"
+confere "novo personal não vê avaliações do outro" "$(como authenticated $P2 'select count(*) from public.avaliacoes')" "0"
+ALUNO2="$(como authenticated $P2 "insert into public.alunos (nome, sexo, nascimento) values ('João Teste','M','1990-05-05') returning id")"
+[[ "$ALUNO2" =~ ^[0-9a-f-]{36}$ ]] && ok "novo personal cadastra o próprio aluno" || erro "aluno do novo personal" "$ALUNO2"
+confere "primeiro personal não vê o aluno do novo" "$(como authenticated $P1 "select count(*) from public.alunos where id = '$ALUNO2'")" "0"
+confere "novo personal não vê o nome do outro personal" "$(como authenticated $P2 "select count(*) from public.personais where usuario_id = '$P1'")" "0"
+confere "convite aparece como usado, com o nome" "$(como authenticated $P1 "select situacao || ' ' || personal_nome from public.listar_convites_personal() limit 1")" "usado Prof. Carlos"
+CP2="$(como authenticated $P1 "select codigo from public.criar_convite_personal(null)")"
+ID2="$(q -d $B -c "select id from public.convites_personal where usado_em is null and cancelado_em is null")"
+confere "administrador cancela convite pendente" "$(como authenticated $P1 "select public.cancelar_convite_personal('$ID2')")" "t"
+confere "convite cancelado não cancela de novo" "$(como authenticated $P1 "select public.cancelar_convite_personal('$ID2')")" "f"
+confere "outro personal não cancela convite" "$(como authenticated $P2 "select public.cancelar_convite_personal('$ID2')")" "f"
+recusa "cadastro não lê avaliações nem com convite de personal" "$(q -d $B -c "begin; set local role service_role; select count(*) from public.avaliacoes; commit;" 2>&1 | tail -1)"
+
 # Exclusão (LGPD): some tudo, inclusive o login da aluna; o personal continua.
 confere "personal apaga a aluna" "$(como authenticated $P1 "select public.excluir_aluno('$ALUNA')")" "t"
 confere "avaliações apagadas junto" "$(q -d $B -c 'select count(*) from public.avaliacoes')" "0"

@@ -12,6 +12,21 @@ const COD = 'Mz_8yaX_GmVI_JUiP_9-3DMYTZu0hAym30Qxs0yo0-A';
 assert.equal(A.codigoDoLink('?convite=' + COD), COD);
 for (const ruim of ['', '?convite=curto', '?convite=' + COD + 'x', '?outro=' + COD]) assert.equal(A.codigoDoLink(ruim), null);
 assert.equal(A.linkConvite('https://fbi0l.github.io/avaliacao-fisica/?x=1#aluno', COD), 'https://fbi0l.github.io/avaliacao-fisica/?convite=' + COD);
+// Convite de personal: outro parâmetro no link, o mesmo formato de código, e o termo igual ao da função
+assert.deepEqual(A.conviteDoLink('?convite_personal=' + COD), { tipo: 'personal', codigo: COD });
+assert.deepEqual(A.conviteDoLink('?convite=' + COD), { tipo: 'aluno', codigo: COD });
+assert.deepEqual(A.conviteDoLink('?convite_personal=curto'), { tipo: 'personal', codigo: null }, 'link de personal quebrado mostra a tela de convite com erro');
+assert.deepEqual(A.conviteDoLink(''), { tipo: null, codigo: null });
+assert.equal(A.linkConvite('https://fbi0l.github.io/avaliacao-fisica/#x', COD, 'convite_personal'), 'https://fbi0l.github.io/avaliacao-fisica/?convite_personal=' + COD);
+const fonteFuncao = require('fs').readFileSync('supabase/functions/registrar-aluno/cadastro.js', 'utf8');
+assert.equal(A.TERMO_PERSONAL_VERSAO, (fonteFuncao.match(/TERMO_PERSONAL_VERSAO = '([^']+)'/) || [])[1], 'mesma versão do termo do personal no app e na função');
+assert.equal(A.situacaoConvite({ situacao: 'pendente', expira_em: '2026-11-08T12:00:00Z' }).cancelavel, true);
+assert.equal(A.situacaoConvite({ situacao: 'usado', personal_nome: 'Carlos' }).detalhe, 'por Carlos');
+for (const sit of ['em_uso', 'usado', 'cancelado', 'vencido', 'xyz']) assert.equal(A.situacaoConvite({ situacao: sit }).cancelavel, false, sit);
+const htmlConv = require('fs').readFileSync('index.html', 'utf8');
+for (const id of ['personaisBtn', 'personaisDialog', 'persRotulo', 'persGerar', 'persLink', 'persCopiar', 'persLista', 'termoPersonal', 'termoAluno', 'convNome', 'convNomeCampo', 'termoPVersao', 'convAceiteTexto'])
+  assert.ok(htmlConv.includes(`id="${id}"`), `index.html tem #${id}`);
+
 
 // Inatividade
 assert.equal(A.expirouPorInatividade(String(Date.now() - 31 * 60e3), Date.now()), true);

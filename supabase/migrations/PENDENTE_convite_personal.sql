@@ -1,0 +1,110 @@
+-- Etapa 3 adiantada: convite de novos personais (05/11/2026).
+-- O personal que criou o projeto é o ADMINISTRADOR: só ele gera convites de personal.
+-- Quem aceita vira personal com os próprios alunos; as regras por personal_id já separam tudo.
+-- O banco guarda só o hash SHA-256 do código do link, como no convite do aluno.
+
+alter table public.personais
+  add column admin boolean not null default false,
+  add column termo_versao text check (termo_versao is null or termo_versao ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'),
+  add column termo_aceito_em timestamptz;
+
+-- O primeiro personal do projeto (quem o criou) vira administrador.
+update public.personais p set admin = true
+ where p.usuario_id = (select q.usuario_id from public.personais q order by q.criado_em, q.usuario_id limit 1);
+
+-- Projeto vazio: o primeiro usuário vira personal E administrador. Os seguintes entram por convite.
+create or replace function privado.ao_criar_usuario()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if not exists (select 1 from public.personais) then
+    insert into public.personais (usuario_id, nome, admin) values (new.id, 'Personal', true);
+  end if;
+  return new;
+end; $$;
+
+create table public.convites_personal (
+  id uuid primary key default gen_random_uuid(),
+  criado_por uuid not null references public.personais(usuario_id) on delete cascade,
+  rotulo text check (rotulo is null or char_length(btrim(rotulo)) between 1 and 40),
+  codigo_hash text not null unique check (codigo_hash ~ '^[0-9a-f]{64}$'),
+  criado_em timestamptz not null default now(),
+  expira_em timestamptz not null default now() + interval '72 hours',
+  usado_em timestamptz,
+  usado_por uuid references auth.users(id) on delete set null,
+  cancelado_em timestamptz,
+  check (expira_em > criado_em)
+);
+alter table public.convites_personal enable row level security;
+-- Nenhum acesso direto pelo app: só pelas funções abaixo e pela função de cadastro (service_role).
+revoke all on public.convites_personal from public, anon, authenticated;
+grant select, update on public.convites_personal to service_role;
+-- A função de cadastro cria a ficha do novo personal com o aceite do termo.
+grant insert (usuario_id, nome, termo_versao, termo_aceito_em) on public.personais to service_role;
+
+create or replace function privado.sou_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.personais where usuario_id = (select auth.uid()) and admin);
+$$;
+
+-- Para o app mostrar o botão "Personais" só ao administrador.
+create or replace function public.sou_administrador() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select privado.sou_admin();
+$$;
+
+create or replace function public.criar_convite_personal(p_rotulo text)
+returns table (id uuid, codigo text, expira_em timestamptz)
+language plpgsql volatile security definer set search_path = '' as $$
+declare v_codigo text; v_rotulo text := nullif(btrim(coalesce(p_rotulo, '')), '');
+begin
+  if not privado.sou_admin() then
+    raise exception 'Só o administrador convida personais.' using errcode = '42501';
+  end if;
+  if v_rotulo is not null and char_length(v_rotulo) > 40 then
+    raise exception 'Nome do convite com no máximo 40 letras.' using errcode = '22001';
+  end if;
+  -- limite de segurança: no máximo 10 convites pendentes ao mesmo tempo
+  if (select count(*) from public.convites_personal c
+       where c.usado_em is null and c.cancelado_em is null and c.expira_em > now()) >= 10 then
+    raise exception 'Já há 10 convites pendentes. Cancele algum antes de gerar outro.' using errcode = '53400';
+  end if;
+  v_codigo := translate(rtrim(encode(extensions.gen_random_bytes(32), 'base64'), '='), '+/', '-_');
+  return query
+    insert into public.convites_personal (criado_por, rotulo, codigo_hash)
+    values ((select auth.uid()), v_rotulo, encode(sha256(convert_to(v_codigo, 'UTF8')), 'hex'))
+    returning convites_personal.id, v_codigo, convites_personal.expira_em;
+end; $$;
+
+create or replace function public.listar_convites_personal()
+returns table (id uuid, rotulo text, criado_em timestamptz, expira_em timestamptz, situacao text, personal_nome text)
+language sql stable security definer set search_path = '' as $$
+  select c.id, c.rotulo, c.criado_em, c.expira_em,
+    case when c.usado_por is not null then 'usado'
+         when c.cancelado_em is not null then 'cancelado'
+         when c.usado_em is not null and c.usado_em > now() - interval '10 minutes' then 'em_uso'
+         when c.usado_em is not null then 'usado'
+         when c.expira_em <= now() then 'vencido'
+         else 'pendente' end,
+    p.nome
+  from public.convites_personal c
+  left join public.personais p on p.usuario_id = c.usado_por
+  where privado.sou_admin()
+  order by c.criado_em desc limit 30;
+$$;
+
+create or replace function public.cancelar_convite_personal(p_id uuid)
+returns boolean language plpgsql volatile security definer set search_path = '' as $$
+declare n int;
+begin
+  if not privado.sou_admin() then return false; end if;
+  update public.convites_personal c set cancelado_em = now()
+   where c.id = p_id and c.usado_em is null and c.cancelado_em is null and c.expira_em > now();
+  get diagnostics n = row_count;
+  return n > 0;
+end; $$;
+
+revoke all on function public.sou_administrador(), public.criar_convite_personal(text), public.listar_convites_personal(),
+  public.cancelar_convite_personal(uuid) from public, anon;
+grant execute on function public.sou_administrador(), public.criar_convite_personal(text), public.listar_convites_personal(),
+  public.cancelar_convite_personal(uuid) to authenticated;
+revoke all on function privado.sou_admin() from public, anon, authenticated;

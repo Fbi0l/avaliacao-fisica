@@ -1,4 +1,6 @@
-// Cadastro do aluno pelo convite do personal (função "registrar-aluno", sem login: quem chama é o aluno).
+// Cadastro pelo link de convite (função "registrar-aluno", sem login prévio):
+// - do ALUNO, pelo convite do personal (padrão);
+// - de um novo PERSONAL, pelo convite do administrador (corpo com tipo: 'personal').
 // Segurança (mesmo modelo do Financeiro):
 // - O código do link tem 43 caracteres aleatórios; o banco só conhece o hash SHA-256 dele.
 // - O convite é RESERVADO numa única operação antes de criar a conta: dois cadastros simultâneos não passam.
@@ -9,6 +11,7 @@
 // Testado em tests/registrar-aluno.mjs.
 
 export const TERMO_VERSAO = '2026-11-04';
+export const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao do app.js
 const ORIGENS = ['https://fbi0l.github.io', 'http://localhost:8098'];
 const RE_CODIGO = /^[A-Za-z0-9_-]{43}$/;
 const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,63}$/;
@@ -75,6 +78,7 @@ export async function tratarCadastro(req, { env, criarCliente, fetchFn = fetch }
   const INVALIDO = { erro: 'Este convite não é mais válido: ele já foi usado, foi cancelado ou venceu. Peça um novo link ao seu personal.', codigo_erro: 'expirado' };
 
   try {
+    if (corpo.tipo === 'personal') return await cadastroPersonal({ corpo, origem, admin, hash, agoraIso, fetchFn });
     if (corpo.acao === 'verificar') {
       const { data: conv, error } = await valido(admin.from('convites_aluno').select('aluno_id,personal_id,expira_em')).maybeSingle();
       if (error) throw error;
@@ -137,4 +141,67 @@ export async function tratarCadastro(req, { env, criarCliente, fetchFn = fetch }
     console.error('registrar-aluno: erro interno', e?.code || '', e?.name || '');
     return resposta(origem, 500, { erro: 'Não foi possível concluir agora. Tente de novo em instantes.' });
   }
+}
+
+/** Convite de PERSONAL: mesma segurança do convite do aluno (reserva atômica, desfaz tudo em falha). */
+async function cadastroPersonal({ corpo, origem, admin, hash, agoraIso, fetchFn }) {
+  const valido = q => q.eq('codigo_hash', hash).is('usado_em', null).is('cancelado_em', null).gt('expira_em', agoraIso);
+  const INVALIDO = { erro: 'Este convite não é mais válido: ele já foi usado, foi cancelado ou venceu. Peça um novo link a quem convidou você.', codigo_erro: 'expirado' };
+
+  if (corpo.acao === 'verificar') {
+    // O "para quem" (rotulo) é uma anotação de quem convidou: não vai para a pessoa convidada.
+    const { data: conv, error } = await valido(admin.from('convites_personal').select('criado_por,expira_em')).maybeSingle();
+    if (error) throw error;
+    if (!conv) return resposta(origem, 410, INVALIDO);
+    const { data: quem } = await admin.from('personais').select('nome').eq('usuario_id', conv.criado_por).maybeSingle();
+    return resposta(origem, 200, { valido: true, tipo: 'personal', convidou: quem?.nome || '', termo: TERMO_PERSONAL_VERSAO, expira_em: conv.expira_em });
+  }
+
+  if (corpo.acao === 'cadastrar') {
+    if (corpo.aceite !== true || corpo.termo !== TERMO_PERSONAL_VERSAO) return resposta(origem, 400, { erro: 'Para criar o acesso, leia e aceite o termo de uso.', codigo_erro: 'termo' });
+    const nome = String(corpo.nome ?? '').trim().replace(/\s+/g, ' ');
+    if (nome.length < 2 || nome.length > 80) return resposta(origem, 400, { erro: 'Informe seu nome (de 2 a 80 letras).' });
+    const email = String(corpo.email ?? '').trim().toLowerCase();
+    const senha = String(corpo.senha ?? '');
+    if (!RE_EMAIL.test(email) || email.length > 254) return resposta(origem, 400, { erro: 'Informe um e-mail válido.' });
+    const fraca = validarSenha(senha, email);
+    if (fraca) return resposta(origem, 400, { erro: fraca });
+    if (await senhaVazada(senha, fetchFn)) return resposta(origem, 400, { erro: 'Essa senha já apareceu em vazamentos de dados na internet. Escolha outra.' });
+
+    // 1) Reserva atômica do convite.
+    const { data: reservado, error: errR } = await valido(admin.from('convites_personal').update({ usado_em: agoraIso })).select('id');
+    if (errR) throw errR;
+    if (!reservado?.length) return resposta(origem, 410, INVALIDO);
+    const idConvite = reservado[0].id;
+    const devolverConvite = () => admin.from('convites_personal').update({ usado_em: null }).eq('id', idConvite);
+
+    // 2) Conta já confirmada (o convite comprova o acesso).
+    const { data: criado, error: errC } = await admin.auth.admin.createUser({ email, password: senha, email_confirm: true });
+    if (errC || !criado?.user) {
+      await devolverConvite();
+      const msg = String(errC?.message || '').toLowerCase();
+      if (msg.includes('password') && (msg.includes('weak') || msg.includes('short'))) return resposta(origem, 400, { erro: 'Senha fraca demais. Use uma senha mais longa e variada.' });
+      return resposta(origem, 400, { erro: 'Não foi possível criar o acesso com este e-mail. Confira o e-mail ou fale com quem convidou você.' });
+    }
+    const idUsuario = criado.user.id;
+
+    // 3) Ficha do personal com o aceite do termo. Falhou? Apaga a conta e devolve o convite.
+    const { error: errP } = await admin.from('personais').insert({ usuario_id: idUsuario, nome, termo_versao: TERMO_PERSONAL_VERSAO, termo_aceito_em: agoraIso });
+    if (errP) {
+      await admin.auth.admin.deleteUser(idUsuario);
+      await devolverConvite();
+      console.error('registrar-aluno: cadastro de personal desfeito', errP?.code || '');
+      return resposta(origem, 500, { erro: 'Não foi possível concluir agora. Tente de novo em instantes.' });
+    }
+
+    // 4) Registra quem usou o convite.
+    for (let tentativa = 1; tentativa <= 3; tentativa++) {
+      const { error: errU } = await admin.from('convites_personal').update({ usado_por: idUsuario }).eq('id', idConvite);
+      if (!errU) break;
+      if (tentativa === 3) console.error('registrar-aluno: convite de personal usado sem registrar quem usou', errU?.code || '');
+    }
+    return resposta(origem, 201, { ok: true });
+  }
+
+  return resposta(origem, 400, { erro: 'Ação desconhecida.' });
 }

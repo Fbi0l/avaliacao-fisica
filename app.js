@@ -6,6 +6,7 @@
 const SUPABASE_URL = 'https://rsgbuvjrkrrybzoacjrh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x1nqjAFBALSgKIXoaDxrXg_pBHxArki';
 const TERMO_VERSAO = '2026-11-04'; // igual ao da função registrar-aluno
+const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
@@ -17,12 +18,31 @@ function hojeISO(agora = new Date()) { return `${agora.getFullYear()}-${doisDigi
 const fmt = (v, casas = 1) => v == null || !Number.isFinite(Number(v)) ? '—'
   : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
-/** Código do convite no endereço (?convite=…): só aceita o formato exato de 43 caracteres. */
-function codigoDoLink(search) {
-  const c = new URLSearchParams(search || '').get('convite');
+/** Código do convite no endereço (?convite=… do aluno, ?convite_personal=… do personal): só o formato exato de 43 caracteres. */
+function codigoDoLink(search, param = 'convite') {
+  const c = new URLSearchParams(search || '').get(param);
   return c && /^[A-Za-z0-9_-]{43}$/.test(c) ? c : null;
 }
-function linkConvite(base, codigo) { const u = new URL(base); u.search = ''; u.hash = ''; u.searchParams.set('convite', codigo); return u.toString(); }
+/** Qual convite o endereço traz: { tipo: 'aluno' | 'personal' | null, codigo }. */
+function conviteDoLink(search) {
+  const q = new URLSearchParams(search || '');
+  if (q.has('convite_personal')) return { tipo: 'personal', codigo: codigoDoLink(search, 'convite_personal') };
+  if (q.has('convite')) return { tipo: 'aluno', codigo: codigoDoLink(search, 'convite') };
+  return { tipo: null, codigo: null };
+}
+function linkConvite(base, codigo, param = 'convite') { const u = new URL(base); u.search = ''; u.hash = ''; u.searchParams.set(param, codigo); return u.toString(); }
+/** Texto da situação de um convite de personal, para a lista do administrador. */
+function situacaoConvite(c) {
+  const quando = iso => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  switch (c?.situacao) {
+    case 'pendente': return { texto: 'Aguardando', detalhe: `vale até ${quando(c.expira_em)}`, tom: 'atencao', cancelavel: true };
+    case 'em_uso': return { texto: 'Em uso agora', detalhe: 'a pessoa está criando o acesso', tom: 'atencao', cancelavel: false };
+    case 'usado': return { texto: 'Aceito', detalhe: c.personal_nome ? `por ${c.personal_nome}` : 'acesso criado', tom: 'bom', cancelavel: false };
+    case 'cancelado': return { texto: 'Cancelado', detalhe: 'o link não funciona mais', tom: '', cancelavel: false };
+    case 'vencido': return { texto: 'Vencido', detalhe: 'passou do prazo de 3 dias', tom: '', cancelavel: false };
+    default: return { texto: '—', detalhe: '', tom: '', cancelavel: false };
+  }
+}
 function expirouPorInatividade(ultima, agora, limite = INATIVIDADE_MS) { const t = Number(ultima); return Number.isFinite(t) && t > 0 && agora - t > limite; }
 
 /** Lê a rota do endereço (#aluno-<id>, #aluno-<id>-evolucao, #av-<id>, #nova-<id>, #editar-<id>). */
@@ -126,7 +146,7 @@ function faltasDoCalculo(av) {
 const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`;
 
 if (typeof module !== 'undefined') {
-  module.exports = { faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }
@@ -568,6 +588,47 @@ function iniciar() {
     $('conviteDialog').close(); aviso('msgGlobal', 'Convite cancelado: o link parou de funcionar.', true);
   });
 
+  /* ----- Convite de personal (só o administrador) ----- */
+  async function desenharConvitesPersonal() {
+    const { data, error } = await db.rpc('listar_convites_personal');
+    if (error) { $('persLista').replaceChildren(h('li', { class: 'vazio' }, erroBanco(error))); return; }
+    if (!data.length) { $('persLista').replaceChildren(h('li', { class: 'vazio' }, 'Nenhum convite ainda.')); return; }
+    $('persLista').replaceChildren(...data.map(c => {
+      const s = situacaoConvite(c);
+      return h('li', null,
+        h('span', { class: 'info' }, h('strong', null, c.rotulo || 'Convite sem nome'), h('small', null, s.detalhe)),
+        h('span', { class: 'chip ' + s.tom }, s.texto),
+        s.cancelavel ? h('button', { class: 'btn perigo-leve', type: 'button', onclick: async ev => {
+          ev.currentTarget.disabled = true;
+          const { error: e } = await db.rpc('cancelar_convite_personal', { p_id: c.id });
+          aviso('persMsg', e ? erroBanco(e) : 'Convite cancelado: o link parou de funcionar.', !e);
+          desenharConvitesPersonal();
+        } }, 'Cancelar') : null);
+    }));
+  }
+  $('personaisBtn').addEventListener('click', () => {
+    $('persRotulo').value = ''; $('persLink').value = ''; aviso('persMsg', '');
+    $('persLinkCaixa').classList.add('hidden'); $('persCompartilhar').classList.add('hidden'); $('persGerar').classList.remove('hidden');
+    $('persLista').replaceChildren(h('li', { class: 'vazio' }, 'Carregando…'));
+    $('personaisDialog').showModal(); desenharConvitesPersonal();
+  });
+  $('persGerar').addEventListener('click', async () => {
+    $('persGerar').disabled = true;
+    const { data, error } = await db.rpc('criar_convite_personal', { p_rotulo: $('persRotulo').value.trim() || null });
+    $('persGerar').disabled = false;
+    if (error || !data?.[0]?.codigo) return aviso('persMsg', /pendentes/.test(error?.message || '') ? error.message : erroBanco(error));
+    $('persLink').value = linkConvite(location.origin + location.pathname, data[0].codigo, 'convite_personal');
+    $('persLinkCaixa').classList.remove('hidden'); $('persGerar').classList.add('hidden');
+    $('persCompartilhar').classList.toggle('hidden', !navigator.share);
+    aviso('persMsg', 'Link criado. Copie e envie agora: por segurança, ele não aparece de novo.', true);
+    $('persLink').select(); desenharConvitesPersonal();
+  });
+  $('persCopiar').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('persLink').value); aviso('persMsg', 'Link copiado. Agora é só colar na conversa com o personal.', true); }
+    catch (_) { $('persLink').select(); aviso('persMsg', 'Selecione o link e copie.', true); }
+  });
+  $('persCompartilhar').addEventListener('click', () => navigator.share?.({ title: 'Convite: Avaliação Física', text: 'Crie seu acesso de personal no app de avaliação física (o link vale por 3 dias):', url: $('persLink').value }).catch(() => {}));
+
   /* ----- Visão do aluno ----- */
   async function telaDoAluno() {
     const [{ data: eu }, { data: avs, error }, { data: pers }] = await Promise.all([
@@ -609,6 +670,8 @@ function iniciar() {
     mostrar('appView');
     $('areaPersonal').classList.toggle('hidden', papel !== 'personal'); $('areaAluno').classList.toggle('hidden', papel !== 'aluno');
     $('perfilBtn').classList.toggle('hidden', papel !== 'personal');
+    $('personaisBtn').classList.add('hidden');
+    if (papel === 'personal') db.rpc('sou_administrador').then(({ data }) => $('personaisBtn').classList.toggle('hidden', data !== true)).catch(() => {});
     try {
       if (papel === 'personal') { await carregarPersonal(); rotear(); }
       else if (papel === 'aluno') await telaDoAluno();
@@ -633,7 +696,7 @@ function iniciar() {
   $('sairBtn').addEventListener('click', async () => { esquecerAtividade(); await db.auth.signOut({ scope: 'local' }); });
   window.addEventListener('hashchange', rotear);
 
-  const codigo = codigoDoLink(location.search), conviteLigado = { sim: new URLSearchParams(location.search).has('convite') };
+  const convite = conviteDoLink(location.search), codigo = convite.codigo, ehPersonal = convite.tipo === 'personal', conviteLigado = { sim: convite.tipo !== null };
   async function chamarCadastro(corpo) {
     const { data, error } = await db.functions.invoke('registrar-aluno', { body: corpo });
     if (!error) return data;
@@ -645,6 +708,18 @@ function iniciar() {
     mostrar('conviteView');
     if (!codigo) return conviteInvalido('Este link de convite está incompleto. Confira se copiou o link inteiro.');
     if (sessao) return conviteInvalido(`Este aparelho já está conectado como ${sessao.user.email}. Saia dessa conta para usar o convite.`);
+    if (ehPersonal) {
+      try {
+        const r = await chamarCadastro({ tipo: 'personal', acao: 'verificar', codigo });
+        $('convTitulo').textContent = 'Crie seu acesso de personal';
+        $('convSub').textContent = `${r.convidou && r.convidou !== 'Personal' ? r.convidou : 'O administrador'} convidou você para usar o app como personal: avaliar seus próprios alunos e acompanhar a evolução deles.`;
+        $('termoAluno').classList.add('hidden'); $('termoPersonal').classList.remove('hidden'); $('convNomeCampo').classList.remove('hidden');
+        $('convAceiteTexto').textContent = 'Li e aceito o termo de uso para personais';
+        $('termoPVersao').textContent = r.termo; est.termo = r.termo;
+        $('convCampos').classList.remove('hidden'); $('convNome').focus();
+      } catch (e) { conviteInvalido(e.message); }
+      return;
+    }
     try {
       const r = await chamarCadastro({ acao: 'verificar', codigo });
       $('convTitulo').textContent = r.nome ? `${r.nome}, crie seu acesso` : 'Crie seu acesso';
@@ -656,13 +731,17 @@ function iniciar() {
   $('conviteForm').addEventListener('submit', async ev => {
     ev.preventDefault();
     const email = $('convEmail').value.trim(), senha = $('convSenha').value;
-    if (!$('convAceite').checked) return aviso('convMsg', 'Para continuar, leia e aceite o termo de uso dos seus dados.');
+    if (!$('convAceite').checked) return aviso('convMsg', ehPersonal ? 'Para continuar, leia e aceite o termo de uso para personais.' : 'Para continuar, leia e aceite o termo de uso dos seus dados.');
+    const nome = $('convNome').value.trim();
+    if (ehPersonal && nome.length < 2) return aviso('convMsg', 'Informe seu nome.');
     if (!email) return aviso('convMsg', 'Informe seu e-mail.');
     if (senha.length < 10) return aviso('convMsg', 'A senha precisa ter pelo menos 10 caracteres.');
     if (senha !== $('convSenha2').value) return aviso('convMsg', 'As duas senhas não são iguais.');
     $('convBtn').disabled = true; aviso('convMsg', 'Criando seu acesso…', true);
     try {
-      await chamarCadastro({ acao: 'cadastrar', codigo, email, senha, aceite: true, termo: est.termo || TERMO_VERSAO });
+      await chamarCadastro(ehPersonal
+        ? { tipo: 'personal', acao: 'cadastrar', codigo, nome, email, senha, aceite: true, termo: est.termo || TERMO_PERSONAL_VERSAO }
+        : { acao: 'cadastrar', codigo, email, senha, aceite: true, termo: est.termo || TERMO_VERSAO });
       conviteLigado.sim = false; history.replaceState(null, '', location.pathname);
       aviso('convMsg', 'Acesso criado! Entrando…', true);
       const { error } = await db.auth.signInWithPassword({ email, password: senha });

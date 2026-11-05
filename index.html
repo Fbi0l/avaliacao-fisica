@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=0.2.0">
+  <link rel="stylesheet" href="styles.css?v=0.3.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="calculos.js?v=0.2.0" defer></script>
-  <script src="app.js?v=0.2.0" defer></script>
+  <script src="calculos.js?v=0.3.0" defer></script>
+  <script src="app.js?v=0.3.0" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -34,7 +34,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 0.2.0</footer>
+    <footer class="rodape">Versão 0.3.0</footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -43,7 +43,7 @@
       <h1 id="convTitulo">Seu acesso à avaliação</h1>
       <p id="convSub" class="muted">Conferindo o convite…</p>
       <div id="convCampos" class="hidden">
-        <section class="termo" aria-labelledby="termoTitulo">
+        <section id="termoAluno" class="termo" aria-labelledby="termoTitulo">
           <h2 id="termoTitulo">Termo de uso dos seus dados</h2>
           <p>Para acompanhar sua evolução, este app guarda as medidas das suas avaliações físicas: peso, altura, perímetros, dobras cutâneas, testes de força, frequência cardíaca, pressão arterial e, se você levar, exames de sangue. A lei (LGPD) considera esses dados de saúde e sensíveis.</p>
           <ul>
@@ -54,7 +54,19 @@
           </ul>
           <p class="muted pequeno">Versão do termo: <span id="termoVersao"></span></p>
         </section>
-        <label class="check"><input id="convAceite" type="checkbox"><span>Li e aceito o termo de uso dos meus dados</span></label>
+        <section id="termoPersonal" class="termo hidden" aria-labelledby="termoPTitulo">
+          <h2 id="termoPTitulo">Termo de uso para personais</h2>
+          <p>Você vai usar o app para registrar avaliações físicas dos seus alunos. Essas medidas são dados de saúde, que a lei (LGPD) considera sensíveis. Ao criar seu acesso, você se compromete a:</p>
+          <ul>
+            <li><strong>Cuidar dos dados dos seus alunos:</strong> usar só para avaliar e acompanhar cada um, sem compartilhar com terceiros.</li>
+            <li><strong>Convidar só com consentimento:</strong> o aluno que recebe seu convite lê e aceita o termo dele antes de ver os próprios dados.</li>
+            <li><strong>Atender pedidos dos alunos:</strong> corrigir ou excluir os dados quando um aluno pedir (o app tem a opção de excluir tudo).</li>
+          </ul>
+          <p>Seus alunos e avaliações ficam separados: nenhum outro personal vê nada seu pelo app. Seus alunos veem seu nome e, se você informar, seu CREF. Quem administra o sistema tem acesso técnico ao banco de dados. O app está em fase de testes.</p>
+          <p class="muted pequeno">Versão do termo: <span id="termoPVersao"></span></p>
+        </section>
+        <label class="check"><input id="convAceite" type="checkbox"><span id="convAceiteTexto">Li e aceito o termo de uso dos meus dados</span></label>
+        <label id="convNomeCampo" class="hidden">Seu nome<input id="convNome" maxlength="80" autocomplete="name"></label>
         <label>E-mail<input id="convEmail" type="email" autocomplete="username" inputmode="email" required></label>
         <label>Crie uma senha<input id="convSenha" type="password" autocomplete="new-password" minlength="10" required></label>
         <label>Repita a senha<input id="convSenha2" type="password" autocomplete="new-password" minlength="10" required></label>
@@ -70,6 +82,7 @@
     <header class="topo">
       <div class="marca"><img src="assets/icone.svg" alt="" width="34" height="34"><div><strong>Avaliação Física</strong><small id="quemSou"></small></div></div>
       <div class="topo-acoes">
+        <button id="personaisBtn" class="btn ghost hidden" type="button">Personais</button>
         <button id="perfilBtn" class="btn ghost hidden" type="button">Meus dados</button>
         <button id="sairBtn" class="btn ghost" type="button">Sair</button>
       </div>
@@ -85,7 +98,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 0.2.0</footer>
+    <footer class="rodape">Versão 0.3.0</footer>
   </div>
 
   <dialog id="alunoDialog" class="dialogo" aria-labelledby="alunoDlgTitulo">
@@ -117,6 +130,19 @@
       <p id="perfilMsg" class="msg" role="alert"></p>
       <div class="dialogo-acoes"><span class="espaco"></span><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
     </form>
+  </dialog>
+
+  <dialog id="personaisDialog" class="dialogo dialogo-p" aria-labelledby="persTitulo">
+    <div class="dialogo-form">
+      <div class="dialogo-topo"><h2 id="persTitulo">Convidar personal</h2><button class="btn ghost icone" type="button" data-fechar aria-label="Fechar">✕</button></div>
+      <p class="muted">Gere um link e envie para o personal. Com ele, a pessoa aceita o termo, cria uma senha e passa a usar o app com <strong>alunos próprios, separados dos seus</strong>: ninguém vê os dados do outro. O link vale por 3 dias e funciona uma vez.</p>
+      <label>Para quem? <span class="muted fraco">(opcional, só para você lembrar)</span><input id="persRotulo" maxlength="40" autocomplete="off" placeholder="Ex.: Prof. Carlos"></label>
+      <div id="persLinkCaixa" class="link-convite hidden"><input id="persLink" readonly aria-label="Link do convite de personal"><button id="persCopiar" class="btn" type="button">Copiar</button></div>
+      <p id="persMsg" class="msg" role="status"></p>
+      <div class="dialogo-acoes"><span class="espaco"></span><button id="persCompartilhar" class="btn hidden" type="button">Compartilhar</button><button id="persGerar" class="btn primary" type="button">Gerar link</button></div>
+      <h3 class="titulo-secao">Convites</h3>
+      <ul id="persLista" class="lista-convites"></ul>
+    </div>
   </dialog>
 
   <dialog id="conviteDialog" class="dialogo dialogo-p" aria-labelledby="convDlgTitulo">
