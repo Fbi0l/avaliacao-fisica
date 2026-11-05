@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=0.4.1">
+  <link rel="stylesheet" href="styles.css?v=0.4.2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="calculos.js?v=0.4.1" defer></script>
-  <script src="app.js?v=0.4.1" defer></script>
+  <script src="calculos.js?v=0.4.2" defer></script>
+  <script src="app.js?v=0.4.2" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -34,7 +34,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 0.4.1</footer>
+    <footer class="rodape">Versão 0.4.2</footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -99,7 +99,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 0.4.1</footer>
+    <footer class="rodape">Versão 0.4.2</footer>
   </div>
 
   <dialog id="alunoDialog" class="dialogo" aria-labelledby="alunoDlgTitulo">
@@ -132,6 +132,15 @@
       <div class="dialogo-acoes"><span class="espaco"></span><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
     </form>
   </dialog>
+
+  <aside id="instalarAviso" class="instalar hidden" aria-label="Instalar o app">
+    <img src="assets/icone-192.png" alt="" width="40" height="40">
+    <p id="instalarTexto"></p>
+    <div class="instalar-acoes">
+      <button id="instalarBtn" class="btn primary hidden" type="button">Instalar</button>
+      <button id="instalarFechar" class="btn ghost" type="button">Agora não</button>
+    </div>
+  </aside>
 
   <dialog id="tutorialDialog" class="dialogo dialogo-tutorial" aria-labelledby="tutTitulo" aria-describedby="tutTexto">
     <div class="dialogo-form">

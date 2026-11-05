@@ -221,8 +221,24 @@ function deveCriarExemplo(metadados, qtdAlunos) {
   return qtdAlunos === 0 && !(metadados && metadados.exemplo_criado === true);
 }
 
+/* ---------- Sugestão de instalar o app (celular) ---------- */
+/** Que aviso de instalação mostrar: null (já instalado ou não é celular), 'android' (botão Instalar),
+    'android-menu' (sem o botão do navegador: ensinar pelo menu) ou 'ios' (ensinar pelo Compartilhar). */
+function avisoInstalacao({ ua = '', instalado = false, temPrompt = false, toques = 0 } = {}) {
+  if (instalado) return null;
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && toques > 1); // iPad novo se apresenta como Mac
+  if (ios) return 'ios';
+  if (/Android/i.test(ua)) return temPrompt ? 'android' : 'android-menu';
+  return null;
+}
+const TEXTO_INSTALAR = {
+  android: 'Instale o app na tela inicial: ele abre com um toque, em tela cheia, como um aplicativo.',
+  'android-menu': 'Instale o app na tela inicial: toque no menu ⋮ do navegador e depois em “Instalar app” ou “Adicionar à tela inicial”.',
+  ios: 'Instale o app na tela de início: toque em Compartilhar (o quadrado com a seta ↑) e depois em “Adicionar à Tela de Início”.'
+};
+
 if (typeof module !== 'undefined') {
-  module.exports = { PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }
@@ -902,6 +918,32 @@ function iniciar() {
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') conferirInatividade(); });
   setInterval(() => { if (document.visibilityState === 'visible') conferirInatividade(); }, 60000);
+
+  /* ----- Sugestão de instalar (celular, sempre que abrir pelo navegador) ----- */
+  const inst = { prompt: null };
+  const instalado = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const dispensadoNestaVisita = () => { try { return sessionStorage.getItem('instalarDepois') === '1'; } catch (_) { return false; } };
+  function mostrarInstalar() {
+    const tipo = dispensadoNestaVisita() ? null : avisoInstalacao({ ua: navigator.userAgent, instalado: instalado(), temPrompt: !!inst.prompt, toques: navigator.maxTouchPoints || 0 });
+    $('instalarAviso').classList.toggle('hidden', !tipo);
+    document.body.classList.toggle('com-instalar', !!tipo); // espaço embaixo para o aviso não cobrir a página
+    if (!tipo) return;
+    $('instalarTexto').textContent = TEXTO_INSTALAR[tipo];
+    $('instalarBtn').classList.toggle('hidden', tipo !== 'android');
+  }
+  window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); inst.prompt = ev; mostrarInstalar(); });
+  window.addEventListener('appinstalled', () => { inst.prompt = null; $('instalarAviso').classList.add('hidden'); document.body.classList.remove('com-instalar'); });
+  $('instalarBtn').addEventListener('click', async () => {
+    if (!inst.prompt) return;
+    inst.prompt.prompt();
+    try { await inst.prompt.userChoice; } catch (_) { /* fechou a janela */ }
+    inst.prompt = null; mostrarInstalar();
+  });
+  $('instalarFechar').addEventListener('click', () => {
+    try { sessionStorage.setItem('instalarDepois', '1'); } catch (_) { /* sem armazenamento */ }
+    $('instalarAviso').classList.add('hidden'); document.body.classList.remove('com-instalar');
+  });
+  mostrarInstalar();
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 

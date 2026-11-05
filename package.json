@@ -1,6 +1,6 @@
 {
   "name": "avaliacao-fisica",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Testes automatizados do app de avaliação física. Não usam rede nem o Supabase real.",
   "scripts": {

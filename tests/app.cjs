@@ -125,4 +125,16 @@ assert.equal(A.ALUNO_EXEMPLO.exemplo, true); assert.match(A.ALUNO_EXEMPLO.nome, 
   assert.ok(g2 < g0, 'o exemplo mostra evolução (gordura caindo)');
   assert.ok(avs[0].dobras.triceps.length === 2, 'mostra dobra com 2 medidas e média');
 }
-console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação, aviso de medidas faltando, guia de primeiro acesso e aluno de exemplo.');
+// Sugestão de instalar: só no celular e só fora do app instalado
+const UA_IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1';
+const UA_AND = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36';
+const UA_PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36';
+assert.equal(A.avisoInstalacao({ ua: UA_IOS }), 'ios');
+assert.equal(A.avisoInstalacao({ ua: UA_AND, temPrompt: true }), 'android');
+assert.equal(A.avisoInstalacao({ ua: UA_AND }), 'android-menu', 'sem o botão do navegador, ensina pelo menu');
+assert.equal(A.avisoInstalacao({ ua: UA_IOS, instalado: true }), null, 'já instalado: nada');
+assert.equal(A.avisoInstalacao({ ua: UA_PC }), null, 'computador: nada');
+assert.equal(A.avisoInstalacao({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/18.0 Safari/605.1.15', toques: 5 }), 'ios', 'iPad novo');
+for (const k of ['android', 'android-menu', 'ios']) assert.ok(A.TEXTO_INSTALAR[k]?.length > 20, k);
+for (const id of ['instalarAviso', 'instalarTexto', 'instalarBtn', 'instalarFechar']) assert.ok(htmlTut.includes(`id="${id}"`), `index.html tem #${id}`);
+console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação, aviso de medidas faltando, guia de primeiro acesso, aluno de exemplo e sugestão de instalar.');

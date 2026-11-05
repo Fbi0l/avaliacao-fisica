@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.4.2 — Sugestão de instalar no celular
+
+- Sempre que o app é aberto no navegador do celular, aparece embaixo um aviso para instalá-lo na tela inicial. No Android, o botão **Instalar** faz tudo em um toque (ou o aviso explica o caminho pelo menu ⋮). No iPhone, o aviso mostra o caminho: Compartilhar → "Adicionar à Tela de Início".
+- "Agora não" esconde o aviso até a próxima vez que o app for aberto. Depois de instalado, ou no computador, o aviso não aparece.
+
 ## Versão 0.4.1 — Topo no celular
 
 - No celular, o topo passa para duas linhas: a marca em cima e os botões (?, Personais, Meus dados, Sair) embaixo, com 44 px de altura para o toque. Antes, com o botão "Personais", o topo ficava mais largo que a tela e empurrava a página para os lados.
