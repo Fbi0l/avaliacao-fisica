@@ -2,6 +2,13 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.2.0 — Duas equações de gordura, leg press e pressão baixa
+
+- **Equação do % de gordura à escolha do personal**, em cada avaliação, na etapa Dobras: **Faulkner** (tríceps, subescapular, suprailíaca e abdominal) ou **Petroski (1995)**, feita com adultos brasileiros (subescapular, tríceps, suprailíaca e panturrilha; para mulheres, também peso e altura; % pela fórmula de Siri). O resultado mostra qual equação foi usada. Avaliações antigas continuam com Faulkner.
+- **Leg press classificado** pela tabela de força relativa do ACSM (1998), por sexo e idade: Excelente, Bom, Médio, Regular ou Fraco. A tabela foi feita em leg press de cadeira; no 45° a classificação tende a sair acima do real (o app avisa).
+- **Pressão baixa**: abaixo de 90/60 mmHg aparece "Baixa (hipotensão)" como alerta, em vez de "Ótima".
+- Banco: coluna `equacao_gordura` nas avaliações (migração `equacao_gordura`).
+
 ## Versão 0.1.1 — Aviso de medidas faltando
 
 - **No resultado**, quando faltam medidas, cada cartão diz o que precisa para calcular (por exemplo, "falta: dobra tríceps, dobra subescapular…") em vez de só "—", e um aviso no topo leva direto para completar a avaliação.

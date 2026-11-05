@@ -38,7 +38,7 @@ let { registro, erros } = A.montarAvaliacao(r, '2026-11-04');
 assert.deepEqual(erros, []);
 assert.deepEqual(registro, {
   data: '2026-10-14', peso: 63.8, altura: 1.65, fc_repouso: 66, pas: 116, pad: 76, glicose: 89, triglicerideos: null, ldl: null, hdl: null,
-  perimetros: { bracoD: 29, cintura: 71 }, dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, parecer: 'Boa evolução.'
+  perimetros: { bracoD: 29, cintura: 71 }, equacao_gordura: 'faulkner', dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, parecer: 'Boa evolução.'
 });
 // Altura digitada em centímetros vira metros
 assert.equal(A.montarAvaliacao({ ...A.rascunhoVazio('2026-10-14'), peso: '70', altura: '172' }, '2026-11-04').registro.altura, 1.72);
@@ -65,5 +65,16 @@ assert.equal(A.sentido(-2, -1), 'bom'); assert.equal(A.sentido(2, -1), 'ruim'); 
   assert.deepEqual(A.faltasDoCalculo({ ...cheio, perimetros: { bracoD: 24 } }).muscular, ['Coxa média D', 'Panturrilha D']);
   assert.deepEqual(A.faltasDoCalculo(undefined).gordura.length, 4, 'avaliação vazia');
   assert.equal(A.listaFalta(['a']), 'a'); assert.equal(A.listaFalta(['a', 'b']), 'a e b'); assert.equal(A.listaFalta(['a', 'b', 'c']), 'a, b e c');
+}
+// Equação escolhida: vai para o registro, volta ao editar e muda as dobras exigidas
+{
+  const base = { ...A.rascunhoVazio('2026-10-14', 1.7), peso: '70' };
+  assert.equal(A.montarAvaliacao({ ...base, equacao: 'petroski' }, '2026-11-04').registro.equacao_gordura, 'petroski');
+  assert.equal(A.montarAvaliacao({ ...base, equacao: 'outra' }, '2026-11-04').registro.equacao_gordura, 'faulkner', 'valor estranho vira Faulkner');
+  assert.equal(A.rascunhoDe({ data: '2026-10-14', peso: 70, altura: 1.7, equacao_gordura: 'petroski' }).equacao, 'petroski');
+  assert.equal(A.rascunhoDe({ data: '2026-10-14', peso: 70, altura: 1.7 }).equacao, 'faulkner', 'avaliação antiga');
+  const dob = { triceps: [10], subesc: [12], iliaca: [14], abdominal: [18] };
+  assert.deepEqual(A.faltasDoCalculo({ dobras: dob }).gordura, []);
+  assert.deepEqual(A.faltasDoCalculo({ dobras: dob, equacao_gordura: 'petroski' }).gordura, ['dobra panturrilha']);
 }
 console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação e aviso de medidas faltando.');

@@ -43,6 +43,9 @@ recusa "medida fora da faixa é recusada" "$(como authenticated $P1 "insert into
 recusa "dobra com texto é recusada" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, dobras) values ('$ALUNA',60,1.6,'{\"triceps\":[\"20\"]}') returning id")"
 recusa "repetições quebradas são recusadas" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"supino\":{\"carga\":40,\"reps\":2.5}}') returning id")"
 recusa "peso absurdo é recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura) values ('$ALUNA',600,1.6) returning id")"
+confere "avaliação antiga fica com Faulkner" "$(q -d $B -c "select equacao_gordura from public.avaliacoes where id='$AVAL'")" "faulkner"
+confere "personal troca a equação para Petroski" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='petroski' where id='$AVAL' returning equacao_gordura")" "petroski"
+recusa "equação desconhecida é recusada" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='xyz' where id='$AVAL' returning id")"
 
 # Um segundo personal (etapa 3) não alcança nada do primeiro.
 q -d $B -c "insert into public.personais (usuario_id, nome) values ('$P2','Outro personal')"

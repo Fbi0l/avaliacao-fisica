@@ -9,7 +9,7 @@ const TERMO_VERSAO = '2026-11-04'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
-  : { PERIMETROS, DOBRAS, EXAMES, ROTULO_ETNIA, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
+  : { PERIMETROS, DOBRAS, EXAMES, ROTULO_ETNIA, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -46,7 +46,7 @@ const FAIXAS = {
 /** Rascunho vazio do formulário (texto, como digitado). */
 function rascunhoVazio(data, altura) {
   return { data, peso: '', altura: altura == null ? '' : String(altura).replace('.', ','), fc_repouso: '', pas: '', pad: '', glicose: '', triglicerideos: '', ldl: '', hdl: '',
-    per: {}, dob1: {}, dob2: {}, supC: '', supR: '', legC: '', legR: '', parecer: '' };
+    per: {}, dob1: {}, dob2: {}, equacao: 'faulkner', supC: '', supR: '', legC: '', legR: '', parecer: '' };
 }
 /** Rascunho a partir de uma avaliação salva (para editar). */
 function rascunhoDe(av) {
@@ -57,6 +57,7 @@ function rascunhoDe(av) {
   for (const [k] of K.DOBRAS) { const par = av.dobras?.[k] || []; r.dob1[k] = t(par[0]); r.dob2[k] = t(par[1]); }
   r.supC = t(av.forca?.supino?.carga); r.supR = t(av.forca?.supino?.reps);
   r.legC = t(av.forca?.leg_press?.carga); r.legR = t(av.forca?.leg_press?.reps);
+  r.equacao = K.equacaoDe(av);
   r.parecer = av.parecer || '';
   return r;
 }
@@ -82,6 +83,7 @@ function montarAvaliacao(r, hoje = hojeISO()) {
     if (v == null) continue;
     if (Number.isNaN(v) || v < 5 || v > 250) erros.push(`${nome}: perímetro entre 5 e 250 cm.`); else reg.perimetros[k] = Math.round(v * 10) / 10;
   }
+  reg.equacao_gordura = K.EQUACOES_GORDURA[r.equacao] ? r.equacao : 'faulkner';
   reg.dobras = {};
   for (const [k, nome] of K.DOBRAS) {
     const a = K.lerNumero(r.dob1?.[k]), b = K.lerNumero(r.dob2?.[k]);
@@ -110,11 +112,8 @@ function montarAvaliacao(r, hoje = hojeISO()) {
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
 
-/** O que falta na avaliação para calcular gordura (Faulkner) e massa muscular (Lee). Devolve os nomes, para avisar o personal. */
-const PRECISA = {
-  gordura: { dobras: ['triceps', 'subesc', 'iliaca', 'abdominal'], perimetros: [] },
-  muscular: { dobras: ['triceps', 'coxa', 'panturrilha'], perimetros: ['bracoD', 'coxaMedD', 'pantD'] }
-};
+/** O que falta na avaliação para calcular gordura (equação escolhida) e massa muscular (Lee). Devolve os nomes, para avisar o personal. */
+const PRECISA_MUSCULAR = { dobras: ['triceps', 'coxa', 'panturrilha'], perimetros: ['bracoD', 'coxaMedD', 'pantD'] };
 function faltasDoCalculo(av) {
   const nome = (lista, k) => (lista.find(([c]) => c === k) || [k, k])[1];
   const tem = x => x != null && Number.isFinite(Number(Array.isArray(x) ? x[0] : x));
@@ -122,7 +121,7 @@ function faltasDoCalculo(av) {
     ...req.perimetros.filter(k => !tem(av?.perimetros?.[k])).map(k => nome(K.PERIMETROS, k)),
     ...req.dobras.filter(k => !tem(av?.dobras?.[k])).map(k => 'dobra ' + nome(K.DOBRAS, k).toLowerCase())
   ];
-  return { gordura: falta(PRECISA.gordura), muscular: falta(PRECISA.muscular) };
+  return { gordura: falta({ dobras: K.EQUACOES_GORDURA[K.equacaoDe(av)].dobras, perimetros: [] }), muscular: falta(PRECISA_MUSCULAR) };
 }
 const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`;
 
@@ -299,7 +298,7 @@ function iniciar() {
             h('button', { class: 'btn primary', type: 'button', onclick: () => ir('editar-' + v.id) }, 'Editar'))),
         faltaAviso(v),
         h('div', { class: 'kpis' },
-          kpi('Gordura', fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)),
+          kpi(`Gordura · ${K.EQUACOES_GORDURA[c.equacaoGordura].nome}`, fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)),
           kpi('Massa muscular', fmt(c.massaMuscular), c.massaMuscular == null ? null : 'kg', c.massaMuscular == null ? faltaTexto(falta.muscular) : chip(c.classeMuscular)),
           kpi('Massa gorda / magra', fmt(c.massaGorda), c.massaGorda == null ? null : `/ ${fmt(c.massaMagra)} kg`, c.massaGorda == null ? h('span', { class: 'sub' }, 'Sai junto com a gordura.') : null),
           kpi('Σ 8 dobras', fmt(c.somaDobras, 0), c.somaDobras == null ? null : 'mm', c.somaDobras == null ? h('span', { class: 'sub' }, 'Nenhuma dobra registrada.') : h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)))),
@@ -317,8 +316,8 @@ function iniciar() {
         h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Força (1RM estimado)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Exercício'), h('th', { class: 'n' }, 'Carga × reps'), h('th', { class: 'n' }, '1RM'), h('th', { class: 'n' }, '÷ peso'), h('th', null, 'Classificação'))),
           h('tbody', null, forca('Supino reto', v.forca?.supino, c.supino1RM, c.supinoRelativo, c.supino1RM == null ? null : chip(c.classeSupino)),
-            forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : h('span', { class: 'chip destaque' }, 'Tabela a definir'))))),
-          h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. A classificação do leg press depende da tabela de referência a escolher.')),
+            forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : chip(c.classeLegPress))))),
+          h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')),
         h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Coração e exames'), h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva'), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
@@ -408,7 +407,13 @@ function iniciar() {
     if (p === 3) {
       const medias = new Map();
       const atualizarMedia = k => { const m = K.mediaDobra([K.lerNumero(r.dob1[k]), K.lerNumero(r.dob2[k])].filter(Number.isFinite)); medias.get(k).textContent = m == null ? '—' : fmt(m); };
-      corpo = h('div', null, h('div', { class: 'dobra cab' }, h('span', null, 'Dobra (mm)'), h('span', null, '1ª medida'), h('span', null, '2ª medida'), h('span', { class: 'media' }, 'Média')),
+      const escolha = h('label', { class: 'campo equacao' }, 'Equação do % de gordura',
+        h('select', { onchange: ev => { r.equacao = ev.target.value; ajuda.textContent = ajudaEquacao(); vivo(); } },
+          Object.entries(K.EQUACOES_GORDURA).map(([k, e]) => h('option', { value: k, selected: r.equacao === k }, e.referencia))));
+      const ajudaEquacao = () => `Usa as dobras: ${listaFalta(K.EQUACOES_GORDURA[r.equacao].dobras.map(k => K.DOBRAS.find(([c]) => c === k)[1].toLowerCase()))}.`
+        + (r.equacao === 'petroski' ? ' Feita com adultos brasileiros; para mulheres, considera também peso e altura.' : '');
+      const ajuda = h('p', { class: 'sub' }, ajudaEquacao());
+      corpo = h('div', null, escolha, ajuda, h('div', { class: 'dobra cab' }, h('span', null, 'Dobra (mm)'), h('span', null, '1ª medida'), h('span', null, '2ª medida'), h('span', { class: 'media' }, 'Média')),
         K.DOBRAS.map(([k, n]) => { const m = h('span', { class: 'media num' }, '—'); medias.set(k, m);
           const inp = (obj, rot) => h('input', { inputMode: 'decimal', value: obj[k] ?? '', autocomplete: 'off', 'aria-label': `${n}, ${rot}`, oninput: ev => { obj[k] = ev.target.value; atualizarMedia(k); vivo(); } });
           return h('div', { class: 'dobra' }, h('span', null, n), inp(r.dob1, '1ª medida'), inp(r.dob2, '2ª medida'), m); }));
@@ -426,7 +431,7 @@ function iniciar() {
       if (erros.length || !registro.peso) { painel.replaceChildren(h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Resultado na hora'), h('span', { class: 'sub' }, 'Aparece conforme você preenche peso, altura, perímetros e dobras.'))); return; }
       const c = K.calcular(a, registro);
       painel.replaceChildren(
-        h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Gordura'), h('span', { class: 'v' }, fmt(c.gordura), c.gordura == null ? null : h('small', null, '%')), c.gordura == null ? h('span', { class: 'sub' }, 'Falta tríceps, subescapular, suprailíaca ou abdominal.') : chip(c.classeGordura)),
+        h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Gordura'), h('span', { class: 'v' }, fmt(c.gordura), c.gordura == null ? null : h('small', null, '%')), c.gordura == null ? h('span', { class: 'sub' }, `Para calcular, falta: ${listaFalta(faltasDoCalculo(registro).gordura)}.`) : chip(c.classeGordura)),
         h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Massa muscular'), h('span', { class: 'v' }, fmt(c.massaMuscular), c.massaMuscular == null ? null : h('small', null, 'kg')), c.massaMuscular == null ? h('span', { class: 'sub' }, 'Precisa de braço D, coxa média D, panturrilha D e as dobras deles.') : chip(c.classeMuscular)));
     }
     const irPasso = n => { est.passo = n; rotear(); };

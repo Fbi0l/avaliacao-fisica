@@ -67,6 +67,12 @@ assert.equal(C.classePressao(125, 90).texto, 'Hipertensão estágio 1');
 assert.equal(C.classePressao(165, 80).texto, 'Hipertensão estágio 2');
 assert.equal(C.classePressao(180, 70).texto, 'Hipertensão estágio 3');
 assert.equal(C.classePressao(120, null), null);
+// Pressão baixa não é "Ótima": abaixo de 90/60 vira alerta de hipotensão
+assert.deepEqual(C.classePressao(60, 30), { texto: 'Baixa (hipotensão)', tom: 'atencao' });
+assert.equal(C.classePressao(89, 70).texto, 'Baixa (hipotensão)');
+assert.equal(C.classePressao(110, 59).texto, 'Baixa (hipotensão)');
+assert.equal(C.classePressao(90, 60).texto, 'Ótima', 'no limite ainda é ótima');
+assert.equal(C.classePressao(150, 55).texto, 'Hipertensão estágio 1', 'hipertensão vence a diastólica baixa');
 
 // Exames
 assert.equal(C.classeExame('glicose', 99).texto, 'Normal'); assert.equal(C.classeExame('glicose', 126).texto, 'Elevada');
@@ -100,4 +106,36 @@ const parcial = C.calcular(aluna, { data: '2026-10-14', peso: 63.8, altura: 1.65
 assert.equal(parcial.gordura, null); assert.equal(parcial.massaMuscular, null); assert.equal(parcial.somaDobras, null);
 assert.equal(parcial.classeGordura, null); assert.equal(parcial.pressao, null);
 
-console.log('Cálculos aprovados: idade, Faulkner, Lee, Phantom, Epley, força, faixas de gordura, pressão e exames.');
+// Petroski (1995): conferido à mão. Mulher 30 anos, 60 kg, 165 cm, Σ4 = 60 mm → densidade 1,0461838 → 23,15 %.
+{
+  const d4 = n => ({ subesc: n, triceps: n, iliaca: n, panturrilha: n });
+  assert.ok(Math.abs(C.gorduraPetroski(d4(15), 'F', 30, 60, 165) - 23.15) < 0.01);
+  // Homem 30 anos, Σ4 = 50 mm → densidade 1,0594402 → 17,23 % (peso e altura não entram)
+  assert.ok(Math.abs(C.gorduraPetroski(d4(12.5), 'M', 30) - 17.23) < 0.01);
+  assert.equal(C.gorduraPetroski({ ...d4(15), panturrilha: null }, 'M', 30), null, 'falta a panturrilha');
+  assert.equal(C.gorduraPetroski(d4(15), 'F', 30, null, 165), null, 'mulher sem peso');
+  assert.ok(C.gorduraPetroski(d4(20), 'M', 30) > C.gorduraPetroski(d4(10), 'M', 30), 'mais dobra, mais gordura');
+  // Escolha por avaliação; sem escolha (avaliações antigas), Faulkner
+  const aluna = { sexo: 'F', nascimento: '1996-01-01', etnia: 'branca' };
+  const av = { data: '2026-01-02', peso: 60, altura: 1.65, perimetros: {}, dobras: { subesc: [15], triceps: [15], iliaca: [15], panturrilha: [15], abdominal: [20] } };
+  assert.equal(C.calcular(aluna, av).equacaoGordura, 'faulkner');
+  assert.ok(Math.abs(C.calcular(aluna, av).gordura - (0.153 * 65 + 5.783)) < 1e-9);
+  const rp = C.calcular(aluna, { ...av, equacao_gordura: 'petroski' });
+  assert.equal(rp.equacaoGordura, 'petroski'); assert.ok(Math.abs(rp.gordura - 23.15) < 0.01);
+  assert.ok(rp.classeGordura?.texto, 'Petroski também recebe classificação');
+  assert.equal(C.equacaoDe({ equacao_gordura: 'xyz' }), 'faulkner');
+}
+// Leg press (ACSM 1998): limites inferiores, por sexo e faixa de idade
+assert.equal(C.classeLegPress(2.08, 'M', 25).texto, 'Excelente');
+assert.equal(C.classeLegPress(2.07, 'M', 25).texto, 'Bom');
+assert.equal(C.classeLegPress(1.90, 'M', 25).texto, 'Médio');
+assert.equal(C.classeLegPress(1.70, 'M', 25).texto, 'Regular');
+assert.equal(C.classeLegPress(1.64, 'M', 25).texto, 'Fraco');
+assert.equal(C.classeLegPress(1.64, 'M', 65).texto, 'Excelente', 'mesma força vale mais aos 65');
+assert.equal(C.classeLegPress(1.40, 'F', 35).texto, 'Bom');
+assert.equal(C.classeLegPress(0.80, 'F', 55).texto, 'Fraco');
+assert.equal(C.classeLegPress(2.2, 'M', 17).texto, 'Excelente', 'menor de 20 usa 20-29');
+assert.equal(C.classeLegPress(null, 'M', 30), null);
+for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for (const r of [0.3, 0.9, 1.2, 1.5, 1.8, 2.5])
+  assert.ok(C.classeLegPress(r, sexo, idade)?.texto, `sem classe: ${sexo} ${idade} ${r}`);
+console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força, faixas de gordura, pressão e exames.');

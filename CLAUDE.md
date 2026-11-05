@@ -18,7 +18,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - O primeiro usuário do projeto vira o personal (gatilho). Alunos entram só por convite do personal e só leem.
 - Preparado para vários personais: tudo tem `personal_id`; as regras de acesso separam os personais. A etapa 3 vai acrescentar o convite de novos personais.
 - O banco guarda só o que é medido; os resultados são calculados no app, então corrigir uma fórmula vale para avaliações antigas.
-- Dobras: `{chave: [1ª medida, 2ª medida]}` em mm. Perímetros: `{chave: cm}`. Força: `{supino|leg_press: {carga, reps}}`.
+- Dobras: `{chave: [1ª medida, 2ª medida]}` em mm. `equacao_gordura`: 'faulkner' (padrão) ou 'petroski'. Perímetros: `{chave: cm}`. Força: `{supino|leg_press: {carga, reps}}`.
 
 ## Regras que não podem ser quebradas
 
@@ -30,9 +30,9 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 
 ## Pendências e decisões em aberto
 
-- Ligar o backup como no Financeiro. Desligar o cadastro aberto no Supabase (Authentication → Sign In / Providers → "Allow new users to sign up") depois que o personal criar a conta: o convite do aluno cria contas pela chave de serviço e não depende dele. A senha do banco não foi guardada na criação: gerar uma nova em Project Settings → Database quando for preciso (backup).
-- Equação de % de gordura (decidido em 05/11): oferecer Faulkner e Petroski (1995) e o personal escolhe em cada avaliação (Petroski feminino pede a dobra axilar média). A implementar.
-- Tabela de força do leg press (decidido em 05/11): propor uma tabela da literatura por sexo e idade para o dono aprovar.
+- Ligar o backup como no Financeiro. Cadastro aberto DESLIGADO em 05/11/2026, depois que o personal (fabioluan090@gmail.com) criou a conta: o convite do aluno cria contas pela chave de serviço e não depende dele. Não religar. A senha do banco não foi guardada na criação: gerar uma nova em Project Settings → Database quando for preciso (backup).
+- % de gordura: Faulkner ou Petroski (1995) à escolha em cada avaliação (`equacao_gordura`), feito na 0.2.0. Usamos a versão de Petroski com as mesmas 4 dobras nos dois sexos (subescapular, tríceps, suprailíaca, panturrilha) e peso/estatura nas mulheres; o coeficiente da idade feminina (0,00026073) aparece como 0,0002073 em uma das fontes: revisar com o personal.
+- Leg press: tabela do ACSM (1998) implementada na 0.2.0, AGUARDANDO aprovação do dono. Feita em leg press de cadeira; no 45° superestima.
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
 - Etapa 2: fichas de treino e periodização. Etapa 3: vários personais.
 

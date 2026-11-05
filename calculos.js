@@ -1,7 +1,7 @@
 /* Cálculos da avaliação física. Funções puras: recebem as medidas e devolvem os resultados.
    Nada aqui acessa a tela ou o banco; tudo é testado em tests/calculos.cjs.
-   Referências: Lee et al. (2000) massa muscular; Faulkner (1968) % de gordura; Ross e Wilson (1974)
-   modelo Phantom; Epley (1985) 1RM; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
+   Referências: Lee et al. (2000) massa muscular; Faulkner (1968) e Petroski (1995) % de gordura; Ross e Wilson (1974)
+   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
 'use strict';
 
 const PERIMETROS = [['bracoD', 'Braço D'], ['bracoE', 'Braço E'], ['antD', 'Antebraço D'], ['antE', 'Antebraço E'], ['torax', 'Tórax'], ['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['coxaSupD', 'Coxa superior D'], ['coxaSupE', 'Coxa superior E'], ['coxaMedD', 'Coxa média D'], ['coxaMedE', 'Coxa média E'], ['pantD', 'Panturrilha D'], ['pantE', 'Panturrilha E']];
@@ -72,6 +72,31 @@ function gorduraFaulkner(d) {
   return v.every(ok) ? 0.153 * v.reduce((s, x) => s + x, 0) + 5.783 : null;
 }
 
+/** % de gordura por Petroski (1995), validada com adultos brasileiros: densidade corporal pelas mesmas
+    4 dobras nos dois sexos (subescapular, tríceps, suprailíaca e panturrilha) e, nas mulheres, também
+    peso (kg) e estatura (cm); a densidade vira % pela fórmula de Siri (1961): 495 / densidade − 450.
+    Fonte das constantes: Petroski (1995), tese UFSM, reproduzida em Rev. Bras. Cineantropom. Desempenho Hum.
+    e Rev. Bras. Geriatr. Gerontol. (2006). A REVISAR com o personal. */
+function gorduraPetroski(d, sexo, idade, peso, alturaCm) {
+  const v = [d.subesc, d.triceps, d.iliaca, d.panturrilha];
+  if (!v.every(ok) || !ok(idade)) return null;
+  const x = v.reduce((s, n) => s + n, 0);
+  let dc;
+  if (sexo === 'M') dc = 1.10726863 - 0.00081201 * x + 0.00000212 * x * x - 0.00041761 * idade;
+  else if (sexo === 'F') {
+    if (!ok(peso) || !ok(alturaCm)) return null;
+    dc = 1.02902361 - 0.00067159 * x + 0.00000242 * x * x - 0.00026073 * idade - 0.00056009 * peso + 0.00054649 * alturaCm;
+  } else return null;
+  return 495 / dc - 450;
+}
+
+/** Equações de % de gordura que o personal pode escolher em cada avaliação, com as dobras que cada uma usa. */
+const EQUACOES_GORDURA = {
+  faulkner: { nome: 'Faulkner', referencia: 'Faulkner (1968)', dobras: ['triceps', 'subesc', 'iliaca', 'abdominal'] },
+  petroski: { nome: 'Petroski', referencia: 'Petroski (1995)', dobras: ['subesc', 'triceps', 'iliaca', 'panturrilha'] }
+};
+const equacaoDe = av => (av && EQUACOES_GORDURA[av.equacao_gordura]) ? av.equacao_gordura : 'faulkner';
+
 /** Massa muscular esquelética (kg) por Lee et al. (2000). Perímetros em cm corrigidos pelas dobras (mm). */
 function massaMuscularLee({ alturaM, sexo, idade, etnia, bracoD, coxaMedD, pantD, triceps, coxa, panturrilha }) {
   if (![alturaM, idade, bracoD, coxaMedD, pantD, triceps, coxa, panturrilha].every(ok)) return null;
@@ -99,9 +124,30 @@ function classeSupino(relativa, sexo, idade) {
   return { texto: 'Muito fraco', tom: 'ruim' };
 }
 
-/** Pressão arterial pela Diretriz Brasileira de Hipertensão 2020: vale a pior das duas medidas. */
+/** Leg press: força relativa (1RM ÷ peso) por sexo e idade, ACSM Guidelines for Exercise Testing and
+    Prescription, Resource Manual (1998). Limites INFERIORES de Excelente, Bom, Médio e Regular para
+    20-29, 30-39, 40-49, 50-59 e 60+ anos (abaixo do último: Fraco). Menores de 20 usam a coluna 20-29.
+    A tabela foi feita num leg press de cadeira (horizontal); no leg press 45° de anilhas a carga
+    costuma ser bem maior, então a classificação tende a sair acima do real. A APROVAR pelo dono (proposta de 05/11/2026). */
+const LEG_PRESS = {
+  M: [[2.08, 1.88, 1.76, 1.66, 1.56], [2.00, 1.80, 1.70, 1.60, 1.50], [1.83, 1.63, 1.56, 1.46, 1.37], [1.65, 1.55, 1.50, 1.40, 1.31]],
+  F: [[1.63, 1.42, 1.32, 1.26, 1.15], [1.54, 1.35, 1.26, 1.13, 1.08], [1.35, 1.20, 1.12, 0.99, 0.92], [1.26, 1.13, 1.06, 0.86, 0.85]]
+};
+function classeLegPress(relativa, sexo, idade) {
+  if (!ok(relativa) || !LEG_PRESS[sexo] || !ok(idade)) return null;
+  const col = Math.min(4, Math.max(0, Math.floor((idade - 20) / 10)));
+  const rot = [['Excelente', 'bom'], ['Bom', 'bom'], ['Médio', 'neutro'], ['Regular', 'atencao']];
+  for (let i = 0; i < 4; i++) if (relativa >= LEG_PRESS[sexo][i][col]) return { texto: rot[i][0], tom: rot[i][1] };
+  return { texto: 'Fraco', tom: 'ruim' };
+}
+
+/** Pressão arterial pela Diretriz Brasileira de Hipertensão 2020: vale a pior das duas medidas.
+    A diretriz só classifica do normal para cima; abaixo de 90/60 mmHg (critério usual de hipotensão)
+    a pressão não é "ótima": vira alerta, a não ser que a outra medida já esteja na faixa de hipertensão. */
 function classePressao(sistolica, diastolica) {
   if (!ok(sistolica) || !ok(diastolica)) return null;
+  const hipertensao = sistolica >= 140 || diastolica >= 90;
+  if (!hipertensao && (sistolica < 90 || diastolica < 60)) return { texto: 'Baixa (hipotensão)', tom: 'atencao' };
   const s = sistolica < 120 ? 0 : sistolica < 130 ? 1 : sistolica < 140 ? 2 : sistolica < 160 ? 3 : sistolica < 180 ? 4 : 5;
   const d = diastolica < 80 ? 0 : diastolica < 85 ? 1 : diastolica < 90 ? 2 : diastolica < 100 ? 3 : diastolica < 110 ? 4 : 5;
   const [texto, tom] = [['Ótima', 'bom'], ['Normal', 'bom'], ['Pré-hipertensão', 'atencao'], ['Hipertensão estágio 1', 'ruim'], ['Hipertensão estágio 2', 'ruim'], ['Hipertensão estágio 3', 'ruim']][Math.max(s, d)];
@@ -134,7 +180,8 @@ function calcular(aluno, av) {
   DOBRAS.forEach(([k]) => { d[k] = mediaDobra((av.dobras || {})[k]); });
   const todas = DOBRAS.every(([k]) => ok(d[k]));
   const soma = (...ks) => ks.every(k => ok(d[k])) ? ks.reduce((s, k) => s + d[k], 0) : null;
-  const gordura = gorduraFaulkner(d);
+  const equacaoGordura = equacaoDe(av);
+  const gordura = equacaoGordura === 'petroski' ? gorduraPetroski(d, aluno.sexo, idade, peso, alturaCm) : gorduraFaulkner(d);
   const massaGorda = ok(gordura) ? peso * gordura / 100 : null;
   const massaMuscular = massaMuscularLee({ alturaM: altura, sexo: aluno.sexo, idade, etnia: aluno.etnia, bracoD: per.bracoD, coxaMedD: per.coxaMedD, pantD: per.pantD, triceps: d.triceps, coxa: d.coxa, panturrilha: d.panturrilha });
   const zMuscular = ok(massaMuscular) ? zPhantom(massaMuscular, alturaCm, ...PHANTOM_MUSCULO, 3) : null;
@@ -149,19 +196,19 @@ function calcular(aluno, av) {
     somaDobras: todas ? soma(...DOBRAS.map(([k]) => k)) : null,
     dobrasPerifericas: soma('triceps', 'biceps', 'coxa', 'panturrilha'),
     dobrasCentrais: soma('subesc', 'iliaca', 'supraesp', 'abdominal'),
-    gordura, classeGordura: classeGordura(gordura, aluno.sexo, idade),
+    gordura, equacaoGordura, classeGordura: classeGordura(gordura, aluno.sexo, idade),
     massaGorda, massaMagra: ok(massaGorda) ? peso - massaGorda : null,
     massaMuscular, zMuscular, classeMuscular: classeMassaMuscular(zMuscular),
     perimetroMuscularBraco: ok(per.bracoD) && ok(d.triceps) ? per.bracoD - Math.PI * d.triceps / 10 : null,
     fcMaxima, fcReserva: ok(av.fc_repouso) ? fcMaxima - av.fc_repouso : null,
     pressao: classePressao(av.pas, av.pad),
     supino1RM: sup, supinoRelativo: ok(sup) ? sup / peso : null, classeSupino: ok(sup) ? classeSupino(sup / peso, aluno.sexo, idade) : null,
-    legPress1RM: leg, legPressRelativo: ok(leg) ? leg / peso : null,
+    legPress1RM: leg, legPressRelativo: ok(leg) ? leg / peso : null, classeLegPress: ok(leg) ? classeLegPress(leg / peso, aluno.sexo, idade) : null,
     zPerimetros, zDobras
   };
 }
 
 if (typeof module !== 'undefined') {
   module.exports = { PERIMETROS, DOBRAS, ETNIAS, ROTULO_ETNIA, EXAMES, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
-    classeMassaMuscular, classeGordura, gorduraFaulkner, massaMuscularLee, umRM, classeSupino, classePressao, classeExame, calcular };
+    classeMassaMuscular, classeGordura, gorduraFaulkner, gorduraPetroski, EQUACOES_GORDURA, equacaoDe, massaMuscularLee, umRM, classeSupino, classeLegPress, classePressao, classeExame, calcular };
 }
