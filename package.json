@@ -5,6 +5,7 @@
   "description": "Testes automatizados do app de avaliação física. Não usam rede nem o Supabase real.",
   "scripts": {
     "test": "node --check app.js && node --check calculos.js && node tests/calculos.cjs && node tests/app.cjs && node tests/registrar-aluno.mjs && node tests/seguranca-site.cjs",
-    "test:banco": "bash tests/banco-db.sh"
+    "test:banco": "bash tests/banco-db.sh",
+    "test:backup": "bash tests/backup-restauracao.sh"
   }
 }

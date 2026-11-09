@@ -33,7 +33,7 @@ Nome do app provisório. Visual: Coral revisado desde a 0.9.0.
 
 ## Pendências e decisões em aberto
 
-- Ligar o backup como no Financeiro. Cadastro aberto DESLIGADO em 05/11/2026, depois que o personal (fabioluan090@gmail.com) criou a conta: o convite do aluno cria contas pela chave de serviço e não depende dele. Não religar. A senha do banco não foi guardada na criação: gerar uma nova em Project Settings → Database quando for preciso (backup).
+- Backup: preparado em 09/11/2026 como no Financeiro (`scripts/backup.sh`, workflows `backup.yml` diário 06h17 e `teste-backup.yml`, ensaio `tests/backup-restauracao.sh`, guia em `BACKUP.md`); começa desligado até o dono cadastrar as variáveis e a senha no GitHub (`BACKUP_ENABLED=true`). Cadastro aberto DESLIGADO em 05/11/2026, depois que o personal (fabioluan090@gmail.com) criou a conta: o convite do aluno cria contas pela chave de serviço e não depende dele. Não religar. A senha do banco não foi guardada na criação: gerar uma nova em Project Settings → Database quando for preciso (backup).
 - % de gordura: Faulkner ou Petroski (1995) à escolha em cada avaliação (`equacao_gordura`), feito na 0.2.0. Usamos a versão de Petroski com as mesmas 4 dobras nos dois sexos (subescapular, tríceps, suprailíaca, panturrilha) e peso/estatura nas mulheres; o coeficiente da idade feminina (0,00026073) aparece como 0,0002073 em uma das fontes: revisar com o personal.
 - Leg press: tabela do ACSM (1998), aprovada pelo dono e publicada em 05/11/2026 (0.2.0). Feita em leg press de cadeira; no 45° superestima (o app avisa).
 - Revisar com o personal as faixas de gordura (Heyward 1991), referências dos exames e o texto do termo.
@@ -51,6 +51,7 @@ A versão aparece em `index.html` (rodapés e `?v=`), `sw.js` (cache e lista) e 
 
 - `npm test`: cálculos, regras do formulário, função de cadastro e segurança do site (sem rede).
 - `npm run test:banco` (precisa de um PostgreSQL local em PGHOST/PGPORT): tabelas, regras de acesso, convites, visão do aluno e exclusão, sobre `tests/supabase-simulado.sql`.
+- `npm run test:backup` (idem, mais `age`): backup criptografado, restauração e comparação com a origem. Os dois rodam no GitHub em "Teste do backup".
 - Mudou algo? Rode os testes e acrescente um caso novo.
 
 ## Como publicar
