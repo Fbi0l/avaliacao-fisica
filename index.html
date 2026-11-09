@@ -17,10 +17,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=1.0.1">
+  <link rel="stylesheet" href="styles.css?v=1.0.2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="calculos.js?v=1.0.1" defer></script>
-  <script src="app.js?v=1.0.1" defer></script>
+  <script src="tema.js?v=1.0.2"></script>
+  <script src="calculos.js?v=1.0.2" defer></script>
+  <script src="app.js?v=1.0.2" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -36,7 +37,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 1.0.1</footer>
+    <footer class="rodape">Versão 1.0.2</footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -93,6 +94,12 @@
             <p id="contaNome" class="conta-nome"></p>
             <button id="perfilBtn" class="hidden" type="button" role="menuitem">Meus dados</button>
             <button id="personaisBtn" class="hidden" type="button" role="menuitem">Personais</button>
+            <p class="tema-rotulo" id="temaRotulo">Tema</p>
+            <div class="tema-escolha" role="group" aria-labelledby="temaRotulo">
+              <button type="button" role="menuitemradio" data-tema="auto" aria-checked="true" aria-label="Automático, igual ao aparelho" title="Igual ao aparelho">Auto</button>
+              <button type="button" role="menuitemradio" data-tema="claro" aria-checked="false">Claro</button>
+              <button type="button" role="menuitemradio" data-tema="escuro" aria-checked="false">Escuro</button>
+            </div>
             <button id="sairBtn" class="perigo" type="button" role="menuitem">Sair</button>
           </div>
         </div>
@@ -110,7 +117,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 1.0.1</footer>
+    <footer class="rodape">Versão 1.0.2</footer>
     <nav id="navAluno" class="nav-aluno hidden" aria-label="Navegação principal">
       <a href="#inicio" data-aba="inicio"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Início</a>
       <a href="#avaliacoes" data-aba="avaliacoes"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Avaliações</a>

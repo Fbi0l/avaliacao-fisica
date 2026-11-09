@@ -293,7 +293,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.0.1';
+const GUIA_REVISADO_NA_VERSAO = '1.0.2';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -318,7 +318,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['O balão no topo abre as conversas; o número em coral mostra quantas mensagens você ainda não leu.', 'Na ficha do aluno, “Mensagem” abre a conversa com ele. Pelo clipe, você envia uma avaliação: o aluno toca no cartão e ela abre.', 'Só alunos com acesso ao app conversam. Quem ainda não entrou aparece com “Convidar”.', 'As mensagens são dados do aluno: só vocês dois leem e elas são apagadas junto se ele pedir a exclusão.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
-    itens: ['“Meus dados”, “Personais” e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
+    itens: ['“Meus dados”, “Personais”, o tema (Auto, igual ao aparelho, Claro ou Escuro) e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
 ];
 const PASSOS_TUTORIAL_ALUNO = [
   { icone: '✦', titulo: 'Bem-vindo!',
@@ -338,7 +338,7 @@ const PASSOS_TUTORIAL_ALUNO = [
     itens: ['O número em coral na aba Mensagens mostra quantas você ainda não leu.', 'Quando o personal envia uma avaliação, toque no cartão para abrir.', '“lida” embaixo da sua mensagem quer dizer que o personal já viu.', 'Só você e o seu personal leem a conversa.'] },
   { icone: '?', titulo: 'Perfil e seus dados',
     texto: 'Na aba Perfil você revê este guia e sai do app.',
-    itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
+    itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'No círculo com as suas iniciais, no topo, você escolhe o tema: Auto (igual ao celular), Claro ou Escuro.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
 ];
 /** Mostra o guia sozinho só se a pessoa ainda não o viu (no perfil dela ou neste aparelho). */
 function deveMostrarTutorial(metadados, vistoNoAparelho) {
@@ -1337,7 +1337,24 @@ function iniciar() {
   const menuConta = aberto => { $('contaMenu').classList.toggle('hidden', !aberto); $('contaBtn').setAttribute('aria-expanded', String(aberto)); };
   $('contaBtn').addEventListener('click', ev => { ev.stopPropagation(); const abrir = $('contaMenu').classList.contains('hidden'); menuConta(abrir);
     if (abrir) $('contaMenu').querySelector('button:not(.hidden)')?.focus(); });
-  $('contaMenu').addEventListener('click', ev => { if (ev.target.closest('button')) menuConta(false); });
+  $('contaMenu').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b && !b.dataset.tema) menuConta(false); });
+  /* ----- Tema: automático (segue o aparelho), claro ou escuro; guardado só neste aparelho ----- */
+  function aplicarTema(t) {
+    if (t === 'claro' || t === 'escuro') document.documentElement.dataset.theme = t === 'escuro' ? 'dark' : 'light';
+    else delete document.documentElement.dataset.theme;
+    document.querySelectorAll('[data-tema]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tema === (t || 'auto'))));
+    const escuro = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', escuro ? '#171412' : '#f6f3ef');
+  }
+  let temaSalvo = null;
+  try { temaSalvo = localStorage.getItem('tema'); } catch (_) { /* sem armazenamento */ }
+  aplicarTema(temaSalvo);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => aplicarTema(temaSalvo));
+  document.querySelectorAll('[data-tema]').forEach(b => b.addEventListener('click', () => {
+    temaSalvo = b.dataset.tema === 'auto' ? null : b.dataset.tema;
+    try { if (temaSalvo) localStorage.setItem('tema', temaSalvo); else localStorage.removeItem('tema'); } catch (_) { /* sem armazenamento */ }
+    aplicarTema(temaSalvo);
+  }));
   document.addEventListener('click', ev => { if (!ev.target.closest('.conta')) menuConta(false); });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('contaMenu').classList.contains('hidden')) { menuConta(false); $('contaBtn').focus(); } });
   const mostrarQuem = (nome, detalhe) => { $('quemSou').textContent = detalhe ? `${nome} · ${detalhe}` : nome; $('contaNome').textContent = nome; $('contaIniciais').textContent = iniciais(nome) || '·'; };

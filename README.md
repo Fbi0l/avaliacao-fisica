@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.0.2 — Tema claro e escuro
+
+- No menu da conta (o círculo com as iniciais, no topo), escolha o tema: **Auto** (segue o celular, como antes), **Claro** ou **Escuro**. A escolha fica salva neste aparelho e vale para personal e aluno.
+- Guia de uso atualizado (personal e aluno) com a escolha do tema.
+
 ## Versão 1.0.1 — Ajustes no celular
 
 - Campos do formulário alinhados: o rótulo e a unidade ("Peso (kg)") ficam na mesma linha, e os campos lado a lado começam na mesma altura.

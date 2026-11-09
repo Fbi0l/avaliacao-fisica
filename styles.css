@@ -11,13 +11,22 @@
   --r:16px;
   font-family:var(--fonte); color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased;
 }
-@media (prefers-color-scheme: dark){:root{
+/* Escuro: segue o aparelho (automático) ou a escolha no menu da conta (data-theme no <html>). */
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#171412; --surface:#211d1a; --surface-2:#2b2622; --line:#3b342f;
   --ink:#f3eeea; --muted:#b8afa8;
   --accent:#f0805a; --accent-soft:#3d2219; --accent-ink:#1d1b1a; --accent-text:#f6a88a;
   --mark:#8fb8e8; --mark-soft:#1c2a3a;
   --good:#6fd0a8; --good-soft:#173a2e; --warn:#f0b04d; --warn-soft:#3a2c12; --bad:#f48a80; --bad-soft:#3d1c1a;
   color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171412; --surface:#211d1a; --surface-2:#2b2622; --line:#3b342f;
+  --ink:#f3eeea; --muted:#b8afa8;
+  --accent:#f0805a; --accent-soft:#3d2219; --accent-ink:#1d1b1a; --accent-text:#f6a88a;
+  --mark:#8fb8e8; --mark-soft:#1c2a3a;
+  --good:#6fd0a8; --good-soft:#173a2e; --warn:#f0b04d; --warn-soft:#3a2c12; --bad:#f48a80; --bad-soft:#3d1c1a;
+  color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 /* Fontes servidas pelo próprio site (a CSP não permite fontes de fora). Licença OFL em assets/fonts. */
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/work-sans-latin-400-normal.woff2) format("woff2")}
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/work-sans-latin-500-normal.woff2) format("woff2")}
@@ -330,10 +339,14 @@ label.check input{width:20px;height:20px;accent-color:var(--accent)}
 .topo-acoes{align-items:center}
 .conta{position:relative}
 .conta-btn{width:44px;height:44px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font-family:var(--titulo);font-weight:600;font-size:15px;display:inline-grid;place-items:center}
-.conta-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 40px #00000026;display:grid}
+.conta-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 40px #00000026;display:grid}
 .conta-nome{margin:0;padding:10px 12px 8px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
 .conta-menu button{text-align:left;border:0;background:transparent;border-radius:10px;padding:0 12px;min-height:44px;font-weight:500;font-size:15px}
 .conta-menu button:hover,.conta-menu button:focus-visible{background:var(--surface-2)}
+.tema-escolha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:4px 6px 6px;padding:4px;border-radius:12px;background:var(--surface-2)}
+.tema-rotulo{margin:6px 12px 0;font-size:12px;font-weight:600;color:var(--muted)}
+.conta-menu .tema-escolha button{min-height:40px;padding:0 4px;text-align:center;font-size:14px;border-radius:9px;color:var(--muted)}
+.conta-menu .tema-escolha button[aria-checked="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px #0000001f}
 .conta-menu button.perigo{color:var(--bad);margin-top:4px;border-top:1px solid var(--line);border-radius:0 0 10px 10px}
 /* Lista de alunos: filtros rápidos e linhas como em contatos */
 .filtros{display:flex;flex-wrap:wrap;gap:6px}
