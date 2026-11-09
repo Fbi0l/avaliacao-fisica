@@ -1,7 +1,9 @@
 /* Cálculos da avaliação física. Funções puras: recebem as medidas e devolvem os resultados.
    Nada aqui acessa a tela ou o banco; tudo é testado em tests/calculos.cjs.
    Referências: Lee et al. (2000) massa muscular; Faulkner (1968) e Petroski (1995) % de gordura; Ross e Wilson (1974)
-   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Karvonen (1957) zonas de FC; NSCA (Baechle e Earle, 2008) zonas de carga por % do 1RM; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
+   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Karvonen (1957) zonas de FC; NSCA (Baechle e Earle, 2008) zonas de carga por % do 1RM;
+   CSEP-PATH (2019) / ACSM flexão de braço; Pollock e Wilmore (1993) abdominal em 1 minuto; Cooper (1968) teste de 12 minutos e
+   Cooper Institute classificação do VO2máx; Araújo, Flexiteste (20 movimentos, notas de 0 a 4); Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
 'use strict';
 
 const PERIMETROS = [['bracoD', 'Braço D'], ['bracoE', 'Braço E'], ['antD', 'Antebraço D'], ['antE', 'Antebraço E'], ['torax', 'Tórax'], ['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['coxaSupD', 'Coxa superior D'], ['coxaSupE', 'Coxa superior E'], ['coxaMedD', 'Coxa média D'], ['coxaMedE', 'Coxa média E'], ['pantD', 'Panturrilha D'], ['pantE', 'Panturrilha E']];
@@ -148,6 +150,88 @@ function cargasPorZona(rm) {
   return ZONAS_CARGA.map(z => ({ ...z, min: z.de ? kg(z.de) : null, max: z.chave === 'forca' ? kg(100) : kg(z.ate) }));
 }
 
+/* ---------- Testes físicos (0.7.0) ---------- */
+/** Classe por limites INFERIORES: tabela[sexo][i][coluna], do melhor para o pior; abaixo do último, a última classe. */
+function classePorLimites(valor, tabela, sexo, col, rotulos) {
+  if (!ok(valor) || !tabela[sexo] || col == null) return null;
+  for (let i = 0; i < tabela[sexo].length; i++) if (valor >= tabela[sexo][i][col]) return { texto: rotulos[i][0], tom: rotulos[i][1] };
+  return { texto: rotulos.at(-1)[0], tom: rotulos.at(-1)[1] };
+}
+/** Coluna de idade 15-19, 20-29, …, 60-69 (abaixo de 15 usa 15-19; 70 ou mais usa 60-69). */
+const colunaIdade15a69 = idade => !ok(idade) ? null : idade < 20 ? 0 : Math.min(5, Math.floor((idade - 20) / 10) + 1);
+
+/** Flexão de braço até a falha, CSEP-PATH (2019), a mesma tabela das diretrizes do ACSM.
+    Homens: flexão normal; mulheres: com os joelhos no chão. Limites inferiores de Excelente, Muito bom, Bom e Regular. */
+const FLEXAO = {
+  M: [[39, 36, 30, 25, 21, 18], [29, 29, 22, 17, 13, 11], [23, 22, 17, 13, 10, 8], [18, 17, 12, 10, 7, 5]],
+  F: [[33, 30, 27, 24, 21, 17], [25, 21, 20, 15, 11, 12], [18, 15, 13, 11, 7, 5], [12, 10, 8, 5, 2, 2]]
+};
+const classeFlexao = (reps, sexo, idade) => classePorLimites(reps, FLEXAO, sexo, colunaIdade15a69(idade),
+  [['Excelente', 'bom'], ['Muito bom', 'bom'], ['Bom', 'bom'], ['Regular', 'atencao'], ['Precisa melhorar', 'ruim']]);
+
+/** Abdominal em 1 minuto, Pollock e Wilmore (1993). Limites inferiores de Excelente, Acima da média, Média e Abaixo da média. */
+const ABDOMINAL = {
+  M: [[48, 43, 36, 31, 26, 23], [42, 37, 31, 26, 22, 17], [38, 33, 27, 22, 18, 12], [33, 29, 22, 17, 13, 7]],
+  F: [[42, 36, 29, 25, 19, 16], [36, 31, 24, 20, 12, 12], [32, 25, 20, 15, 5, 4], [27, 21, 15, 7, 3, 2]]
+};
+const classeAbdominal = (reps, sexo, idade) => classePorLimites(reps, ABDOMINAL, sexo, colunaIdade15a69(idade),
+  [['Excelente', 'bom'], ['Acima da média', 'bom'], ['Média', 'neutro'], ['Abaixo da média', 'atencao'], ['Fraco', 'ruim']]);
+
+/** VO2máx (ml/kg/min) estimado pela distância do teste de Cooper de 12 minutos (m). */
+const vo2Cooper = metros => ok(metros) && metros > 504.9 ? (metros - 504.9) / 44.73 : null;
+/** VO2máx pela tabela do Cooper Institute (percentis 95, 80, 60 e 40), 20-29 a 70-79 (abaixo de 20 usa 20-29; 80 ou mais, 70-79). */
+const VO2 = {
+  M: [[55.4, 54, 52.5, 48.9, 45.7, 42.1], [51.1, 48.3, 46.4, 43.4, 39.5, 36.7], [45.4, 44, 42.4, 39.2, 35.5, 32.3], [41.7, 40.5, 38.5, 35.6, 32.3, 29.4]],
+  F: [[49.6, 47.4, 45.3, 41.1, 37.8, 36.7], [43.9, 42.4, 39.7, 36.7, 33, 30.9], [39.5, 37.8, 36.3, 33, 30, 28.1], [36.1, 34.4, 33, 30.1, 27.5, 25.9]]
+};
+const classeVO2 = (vo2, sexo, idade) => classePorLimites(vo2, VO2, sexo, !ok(idade) ? null : Math.min(5, Math.max(0, Math.floor((idade - 20) / 10))),
+  [['Superior', 'bom'], ['Excelente', 'bom'], ['Bom', 'bom'], ['Razoável', 'neutro'], ['Fraco', 'ruim']]);
+/** Ritmo (min por km) e velocidade (km/h) a partir da distância (m) e do tempo (min). */
+function ritmo(metros, minutos) {
+  if (!ok(metros) || !ok(minutos) || metros <= 0 || minutos <= 0) return null;
+  return { pace: minutos / (metros / 1000), kmh: (metros / 1000) / (minutos / 60) };
+}
+/** Pace em texto: 5,5 → "5:30 /km". */
+function paceTexto(minPorKm) {
+  if (!ok(minPorKm)) return null;
+  let m = Math.floor(minPorKm), seg = Math.round((minPorKm - m) * 60);
+  if (seg === 60) { m += 1; seg = 0; }
+  return `${m}:${String(seg).padStart(2, '0')} /km`;
+}
+
+/** Flexiteste (Araújo): 20 movimentos, nota de 0 (amplitude muito pequena) a 4 (muito grande). Flexíndice = soma dos 20. */
+const FLEXITESTE = [
+  ['I', 'Flexão dorsal', 'Tornozelo'], ['II', 'Flexão plantar', 'Tornozelo'],
+  ['III', 'Flexão', 'Joelho'], ['IV', 'Extensão', 'Joelho'],
+  ['V', 'Flexão', 'Quadril'], ['VI', 'Extensão', 'Quadril'], ['VII', 'Adução', 'Quadril'], ['VIII', 'Abdução', 'Quadril'],
+  ['IX', 'Flexão', 'Tronco'], ['X', 'Extensão', 'Tronco'], ['XI', 'Flexão lateral', 'Tronco'],
+  ['XII', 'Flexão', 'Punho'], ['XIII', 'Extensão', 'Punho'],
+  ['XIV', 'Flexão', 'Cotovelo'], ['XV', 'Extensão', 'Cotovelo'],
+  ['XVI', 'Adução posterior a partir da abdução de 180°', 'Ombro'], ['XVII', 'Extensão com adução posterior', 'Ombro'],
+  ['XVIII', 'Extensão posterior', 'Ombro'], ['XIX', 'Rotação lateral (abdução de 90°, cotovelo a 90°)', 'Ombro'],
+  ['XX', 'Rotação medial (abdução de 90°, cotovelo a 90°)', 'Ombro']
+];
+const MIN_FLEXITESTE_SUGERIDO = 5;
+
+/** Resultados dos testes físicos de uma avaliação (campo testes). */
+function calcularTestes(testes, sexo, idade) {
+  const t = testes && typeof testes === 'object' ? testes : {};
+  const aer = t.aerobico && typeof t.aerobico === 'object' ? t.aerobico : null;
+  const cooper = aer?.tipo === 'cooper', tempo = cooper ? 12 : Number(aer?.tempo);
+  const distancia = aer ? Number(aer.distancia) : null;
+  const vo2 = cooper ? vo2Cooper(distancia) : null;
+  const flex = t.flexiteste && typeof t.flexiteste === 'object' ? t.flexiteste : {};
+  const movimentos = FLEXITESTE.filter(([k]) => Number.isInteger(flex[k])).map(([k, nome, art]) => ({ chave: k, nome, articulacao: art, nota: flex[k] }));
+  return {
+    flexao: ok(t.flexao) ? t.flexao : null, classeFlexao: classeFlexao(t.flexao, sexo, idade),
+    abdominal: ok(t.abdominal) ? t.abdominal : null, classeAbdominal: classeAbdominal(t.abdominal, sexo, idade),
+    aerobico: aer ? { tipo: aer.tipo, distancia, tempo, fcFinal: ok(aer.fc_final) ? aer.fc_final : null, ...ritmo(distancia, tempo) } : null,
+    vo2, classeVO2: classeVO2(vo2, sexo, idade),
+    flexiteste: movimentos, somaFlexiteste: movimentos.length ? movimentos.reduce((a, m) => a + m.nota, 0) : null,
+    flexindice: movimentos.length === FLEXITESTE.length ? movimentos.reduce((a, m) => a + m.nota, 0) : null
+  };
+}
+
 /** Outros exercícios do teste de força, escolhidos pelo personal: sem tabela de classificação, só 1RM e 1RM ÷ peso. */
 const MAX_OUTROS_EXERCICIOS = 8;
 const SUGESTOES_EXERCICIOS = ['Agachamento livre', 'Remada curvada', 'Puxada frontal', 'Desenvolvimento', 'Rosca direta', 'Tríceps testa',
@@ -256,11 +340,12 @@ function calcular(aluno, av) {
     outrosExercicios: outros,
     exercicios1RM: [['Supino reto', sup], ['Leg press', leg], ...outros.map(o => [o.nome, o.rm])].filter(([, rm]) => ok(rm)).map(([nome, rm]) => ({ nome, rm })),
     zonasFC: zonasFC(fcMaxima, ok(av.fc_repouso) ? Number(av.fc_repouso) : null),
+    testes: calcularTestes(av.testes, aluno.sexo, idade),
     zPerimetros, zDobras
   };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { ZONAS_FC, ZONAS_CARGA, zonasFC, zonaCarga, cargasPorZona, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
+  module.exports = { FLEXAO, ABDOMINAL, VO2, FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, classeFlexao, classeAbdominal, vo2Cooper, classeVO2, ritmo, paceTexto, calcularTestes, ZONAS_FC, ZONAS_CARGA, zonasFC, zonaCarga, cargasPorZona, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
     classeMassaMuscular, classeGordura, gorduraFaulkner, gorduraPetroski, EQUACOES_GORDURA, equacaoDe, massaMuscularLee, umRM, classeSupino, classeLegPress, classePressao, classeExame, calcular };
 }

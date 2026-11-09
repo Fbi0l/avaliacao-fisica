@@ -2,6 +2,17 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.7.0 — Testes físicos
+
+- Nova etapa **Testes** na avaliação (agora são 7 etapas), toda opcional:
+  - **Flexão de braço** até a falha, classificada pela tabela da CSEP (CSEP-PATH 2019, a mesma reproduzida nas diretrizes do ACSM), por sexo e idade. Mulheres fazem com os joelhos no chão.
+  - **Abdominal em 1 minuto**, classificado por Pollock e Wilmore (1993).
+  - **Teste aeróbico**: Cooper de 12 minutos (o app estima o VO₂máx e classifica pela tabela do Cooper Institute) ou distância e tempo livres (pace e velocidade). FC ao final, opcional.
+  - **Flexiteste** (Araújo): nota de 0 a 4 em cada um dos 20 movimentos que o personal escolher testar (sugestão: pelo menos 5). Com os 20, mostra o Flexíndice.
+- Os testes aparecem no resultado da avaliação, nos gráficos de evolução, na comparação entre avaliações e no painel do aluno (a avaliação mais recente com testes).
+- A aluna de exemplo ganhou testes nas 3 avaliações. Guia de uso atualizado.
+- Banco: coluna `testes` em `avaliacoes`, conferida por `privado.testes_valida` (migração `testes_fisicos`).
+
 ## Versão 0.6.0 — Zonas de treino
 
 - Nova seção **Zonas de treino** no resultado de cada avaliação (personal) e no painel do aluno.
@@ -57,7 +68,7 @@ App para o personal trainer registrar avaliações físicas, acompanhar a evolu�
 ## Versão 0.1.0 — Etapa 1: avaliação e evolução
 
 - **Alunos:** cadastro com sexo e nascimento, busca e edição.
-- **Nova avaliação em 6 etapas** (básico, exames, perímetros, dobras, força, parecer), com gordura e massa muscular calculadas enquanto se preenche. Altura aceita em metros ou centímetros; dobras com até duas medidas e média automática.
+- **Nova avaliação em 7 etapas** (básico, exames, perímetros, dobras, força, testes, parecer), com gordura e massa muscular calculadas enquanto se preenche. Altura aceita em metros ou centímetros; dobras com até duas medidas e média automática.
 - **Resultado completo:** gordura (Faulkner), massa muscular (Lee et al., 2000), massa gorda e magra em kg, somatórios de dobras, proporcionalidade (Phantom) em régua neutra, 1RM (Epley) com força relativa no supino, FC máxima e de reserva, pressão arterial classificada pela Diretriz Brasileira de 2020 e exames com referência. Botão para imprimir ou salvar em PDF.
 - **Evolução** em gráficos (peso, gordura, massa muscular, soma de dobras, cintura e 1RM) e **comparação** entre quaisquer duas avaliações.
 - **Acesso do aluno por convite:** link de uso único, válido por 7 dias. O aluno aceita o termo de uso dos dados de saúde (LGPD), cria a senha e passa a ver só os próprios resultados, em linguagem simples, com o recado do personal.

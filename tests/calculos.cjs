@@ -178,4 +178,46 @@ for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for
   assert.equal(C.cargasPorZona(null), null);
   assert.deepEqual(r.exercicios1RM.map(e => e.nome), ['Supino reto'], 'só exercícios testados');
 }
-console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, faixas de gordura, pressão e exames.');
+// Testes físicos: tabelas conferidas em 09/11/2026 (CSEP-PATH 2019, Pollock e Wilmore 1993, Cooper Institute)
+{
+  // Flexão (CSEP): homem 20-29 → Excelente ≥36, Muito bom 29-35, Bom 22-28, Regular 17-21, Precisa melhorar ≤16
+  for (const [n, t] of [[36, 'Excelente'], [35, 'Muito bom'], [29, 'Muito bom'], [28, 'Bom'], [22, 'Bom'], [21, 'Regular'], [17, 'Regular'], [16, 'Precisa melhorar'], [0, 'Precisa melhorar']])
+    assert.equal(C.classeFlexao(n, 'M', 25).texto, t, `flexão homem 25 anos, ${n}`);
+  // Mulher 50-59 (joelhos): ≥21, 11-20, 7-10, 2-6, ≤1
+  for (const [n, t] of [[21, 'Excelente'], [11, 'Muito bom'], [10, 'Bom'], [7, 'Bom'], [6, 'Regular'], [2, 'Regular'], [1, 'Precisa melhorar']])
+    assert.equal(C.classeFlexao(n, 'F', 55).texto, t, `flexão mulher 55 anos, ${n}`);
+  assert.equal(C.classeFlexao(39, 'M', 16).texto, 'Excelente', '15-19'); assert.equal(C.classeFlexao(38, 'M', 16).texto, 'Muito bom');
+  assert.equal(C.classeFlexao(18, 'M', 75).texto, 'Excelente', '70+ usa 60-69'); assert.equal(C.classeFlexao(null, 'M', 30), null);
+  // Abdominal 1 min (Pollock e Wilmore): homem 15-19 → ≥48, 42-47, 38-41, 33-37, ≤32
+  for (const [n, t] of [[48, 'Excelente'], [47, 'Acima da média'], [42, 'Acima da média'], [41, 'Média'], [38, 'Média'], [37, 'Abaixo da média'], [33, 'Abaixo da média'], [32, 'Fraco']])
+    assert.equal(C.classeAbdominal(n, 'M', 18).texto, t, `abdominal homem 18 anos, ${n}`);
+  // Mulher 20-29: ≥36, 31-35, 25-30, 21-24, ≤20
+  for (const [n, t] of [[36, 'Excelente'], [31, 'Acima da média'], [30, 'Média'], [25, 'Média'], [24, 'Abaixo da média'], [21, 'Abaixo da média'], [20, 'Fraco']])
+    assert.equal(C.classeAbdominal(n, 'F', 25).texto, t, `abdominal mulher 25 anos, ${n}`);
+  // Tabelas sem buracos nem degraus invertidos: limites caem do melhor para o pior em toda coluna
+  for (const tab of [C.FLEXAO, C.ABDOMINAL, C.VO2]) for (const sexo of ['M', 'F']) for (let col = 0; col < 6; col++)
+    for (let i = 1; i < 4; i++) assert.ok(tab[sexo][i][col] < tab[sexo][i - 1][col], `limites em ordem ${sexo} ${col} ${i}`);
+  // Cooper: VO2 = (d − 504,9) / 44,73 → 2400 m = 42,37
+  perto(C.vo2Cooper(2400), 42.3675, 0.001, 'VO2 do Cooper'); assert.equal(C.vo2Cooper(400), null, 'distância curta demais');
+  // Cooper Institute, homem 30-39: Superior ≥54, Excelente ≥48,3, Bom ≥44, Razoável ≥40,5, Fraco abaixo
+  for (const [v, t] of [[54, 'Superior'], [53.9, 'Excelente'], [48.3, 'Excelente'], [44, 'Bom'], [40.5, 'Razoável'], [40.4, 'Fraco']])
+    assert.equal(C.classeVO2(v, 'M', 35).texto, t, `VO2 homem 35, ${v}`);
+  assert.equal(C.classeVO2(49.6, 'F', 18).texto, 'Superior', 'abaixo de 20 usa 20-29'); assert.equal(C.classeVO2(36.7, 'F', 85).texto, 'Superior', '80+ usa 70-79');
+  // Ritmo
+  assert.deepEqual(C.ritmo(4000, 30), { pace: 7.5, kmh: 8 }); assert.equal(C.paceTexto(7.5), '7:30 /km'); assert.equal(C.paceTexto(4.999), '5:00 /km');
+  assert.equal(C.ritmo(0, 10), null);
+  // Flexiteste: 20 movimentos, I a XX
+  assert.equal(C.FLEXITESTE.length, 20); assert.deepEqual(C.FLEXITESTE.map(m => m[0]).slice(0, 4), ['I', 'II', 'III', 'IV']); assert.equal(C.FLEXITESTE[19][0], 'XX');
+  // Tudo junto, na avaliação
+  const rt = C.calcular(aluna, { ...av, testes: { flexao: 20, abdominal: 25, aerobico: { tipo: 'cooper', distancia: 2050, fc_final: 176 }, flexiteste: { IV: 3, I: 2 } } });
+  assert.equal(rt.testes.classeFlexao.texto, 'Muito bom', 'mulher 32 anos, 20 flexões'); assert.equal(rt.testes.classeAbdominal.texto, 'Acima da média');
+  perto(rt.testes.vo2, (2050 - 504.9) / 44.73, 1e-9, 'VO2'); assert.equal(rt.testes.aerobico.tempo, 12); assert.equal(rt.testes.aerobico.fcFinal, 176);
+  assert.deepEqual(rt.testes.flexiteste.map(m => m.chave), ['I', 'IV'], 'na ordem do teste'); assert.equal(rt.testes.somaFlexiteste, 5); assert.equal(rt.testes.flexindice, null);
+  const todos = Object.fromEntries(C.FLEXITESTE.map(([k]) => [k, 2]));
+  assert.equal(C.calcularTestes({ flexiteste: todos }, 'M', 30).flexindice, 40, 'com os 20, Flexíndice');
+  const livre = C.calcularTestes({ aerobico: { tipo: 'livre', distancia: 4000, tempo: 30 } }, 'M', 30);
+  assert.equal(livre.vo2, null, 'livre não estima VO2'); assert.equal(livre.aerobico.kmh, 8);
+  const vazio = C.calcularTestes(undefined, 'M', 30);
+  assert.equal(vazio.flexao, null); assert.equal(vazio.aerobico, null); assert.deepEqual(vazio.flexiteste, []);
+}
+console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, testes físicos (flexão, abdominal, Cooper, flexiteste), faixas de gordura, pressão e exames.');

@@ -53,6 +53,21 @@ recusa "recusa carga fora da faixa" "$(como authenticated $P1 "insert into publi
 recusa "recusa campo estranho no exercício" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\"Remada\",\"carga\":50,\"reps\":5,\"x\":1}]}') returning id")"
 recusa "recusa mais de 8 exercícios" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,jsonb_build_object('outros',(select jsonb_agg(jsonb_build_object('nome','Ex '||i,'carga',10,'reps',5)) from generate_series(1,9) i))) returning id")"
 recusa "recusa outros que não é lista" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":{\"nome\":\"Remada\"}}') returning id")"
+recusa "recusa exercício vazio" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{}]}') returning id")"
+recusa "recusa exercício sem carga" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\"Remada\",\"reps\":5}]}') returning id")"
+recusa "recusa supino vazio" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"supino\":{}}') returning id")"
+# 0.7.0: testes físicos
+T1='{"flexao":22,"abdominal":35,"aerobico":{"tipo":"cooper","distancia":2400,"fc_final":172},"flexiteste":{"IV":3,"XII":0}}'
+confere "aceita testes físicos" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, testes) values ('$ALUNA',60,1.6,'$T1') returning testes->>'flexao'")" "22"
+confere "aceita corrida livre" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, testes) values ('$ALUNA',60,1.6,'{\"aerobico\":{\"tipo\":\"livre\",\"distancia\":4000,\"tempo\":30}}') returning testes->'aerobico'->>'tempo'")" "30"
+confere "personal edita os testes" "$(como authenticated $P1 "update public.avaliacoes set testes = '{\"abdominal\":30}' where testes ? 'flexao' returning testes->>'abdominal'")" "30"
+
+for ruim in '{"flexao":2.5}' '{"abdominal":200}' '{"flexao":"20"}' '{"aerobico":{"tipo":"cooper","distancia":2400,"tempo":12}}' '{"aerobico":{"tipo":"livre","distancia":4000}}' \
+  '{"aerobico":{"tipo":"esteira","distancia":2000}}' '{"aerobico":{"tipo":"cooper","distancia":50}}' '{"aerobico":{"tipo":"cooper","distancia":2000,"fc_final":300}}' \
+  '{"aerobico":{"distancia":2000}}' '{"aerobico":{"tipo":"cooper"}}' '{"aerobico":{"tipo":"livre","tempo":30}}' '{"flexiteste":{"XXI":2}}' '{"flexiteste":{"I":5}}' '{"flexiteste":{"I":1.5}}' '{"outro":1}'; do
+  recusa "recusa testes $ruim" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, testes) values ('$ALUNA',60,1.6,'$ruim') returning id")"
+done
+q -d $B -c "delete from public.avaliacoes where testes <> '{}'" # não contam nas próximas verificações
 recusa "peso absurdo é recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura) values ('$ALUNA',600,1.6) returning id")"
 confere "avaliação antiga fica com Faulkner" "$(q -d $B -c "select equacao_gordura from public.avaliacoes where id='$AVAL'")" "faulkner"
 confere "personal troca a equação para Petroski" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='petroski' where id='$AVAL' returning equacao_gordura")" "petroski"

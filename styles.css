@@ -296,3 +296,15 @@ body.com-instalar{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 .faixa.zona-resistencia{background:var(--accent-soft);color:var(--accent)}
 .faixa.zona-hipertrofia{background:var(--good-soft);color:var(--good)}
 .faixa.zona-forca{background:var(--mark-soft);color:var(--mark)}
+
+/* Testes físicos (0.7.0) */
+.flexiteste{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;margin-top:6px}
+.flex-art{grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-top:8px}
+.flex-mov{display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:8px;align-items:center;font-size:14px}
+.flex-mov select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:16px}
+.lista-flex{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.lista-flex li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:4px 0;border-bottom:1px solid var(--line)}
+.notas{display:inline-flex;align-items:center;gap:3px;flex:none}
+.notas>span{width:12px;height:12px;border-radius:3px;background:var(--surface-2);border:1px solid var(--line)}
+.notas>span.cheia{background:var(--accent);border-color:var(--accent)}
+.notas>b{margin-left:6px;font-size:13px}

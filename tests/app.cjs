@@ -53,7 +53,7 @@ let { registro, erros } = A.montarAvaliacao(r, '2026-11-04');
 assert.deepEqual(erros, []);
 assert.deepEqual(registro, {
   data: '2026-10-14', peso: 63.8, altura: 1.65, fc_repouso: 66, pas: 116, pad: 76, glicose: 89, triglicerideos: null, ldl: null, hdl: null,
-  perimetros: { bracoD: 29, cintura: 71 }, equacao_gordura: 'faulkner', dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, parecer: 'Boa evolução.'
+  perimetros: { bracoD: 29, cintura: 71 }, equacao_gordura: 'faulkner', dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, testes: {}, parecer: 'Boa evolução.'
 });
 // Altura digitada em centímetros vira metros
 assert.equal(A.montarAvaliacao({ ...A.rascunhoVazio('2026-10-14'), peso: '70', altura: '172' }, '2026-11-04').registro.altura, 1.72);
@@ -103,14 +103,35 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.equal(A.zonasDoAluno(al, [avs[1]]).fc.metodo, 'fcmax', 'sem nenhuma FC de repouso');
 }
 
+// Testes físicos (0.7.0): formulário → registro, erros e ida e volta
+{
+  const base = { ...A.rascunhoVazio('2026-10-14', 1.7), peso: '70' };
+  const t = { ...A.testesVazios(), flexao: '22', abdominal: '35', aerTipo: 'cooper', aerDist: '2.400', aerFc: '172', flex: { IV: '3', XII: '0', I: '' } };
+  const r1 = A.montarAvaliacao({ ...base, testes: t }, '2026-11-04');
+  assert.deepEqual(r1.erros, []);
+  assert.deepEqual(r1.registro.testes, { flexao: 22, abdominal: 35, aerobico: { tipo: 'cooper', distancia: 2400, fc_final: 172 }, flexiteste: { IV: 3, XII: 0 } }, 'Cooper sem tempo; "—" fica de fora');
+  const livre = A.montarAvaliacao({ ...base, testes: { ...A.testesVazios(), aerTipo: 'livre', aerDist: '4000', aerTempo: '30' } }, '2026-11-04');
+  assert.deepEqual(livre.registro.testes, { aerobico: { tipo: 'livre', distancia: 4000, tempo: 30 } });
+  assert.deepEqual(A.montarAvaliacao({ ...base, testes: { ...A.testesVazios(), aerDist: '2000' } }, '2026-11-04').registro.testes, {}, 'sem tipo, sem teste aeróbico');
+  const errT = (extra, re) => { const e = A.montarAvaliacao({ ...base, testes: { ...A.testesVazios(), ...extra } }, '2026-11-04').erros; assert.ok(e.some(m => re.test(m)), `${JSON.stringify(extra)} → ${e}`); };
+  errT({ flexao: '2,5' }, /Flexão de braço/); errT({ abdominal: '200' }, /Abdominal/);
+  errT({ aerTipo: 'cooper' }, /distância/); errT({ aerTipo: 'livre', aerDist: '3000' }, /tempo/);
+  errT({ aerTipo: 'cooper', aerDist: '2000', aerFc: '300' }, /FC final/); errT({ flex: { V: '5' } }, /Flexiteste V/);
+  const volta = A.montarAvaliacao(A.rascunhoDe({ ...r1.registro, data: '2026-10-14', peso: 70, altura: 1.7 }), '2026-11-04');
+  assert.deepEqual(volta.registro.testes, r1.registro.testes, 'editar ida e volta');
+  assert.deepEqual(A.rascunhoDe({ data: '2026-10-14', peso: 70, altura: 1.7 }).testes, A.testesVazios(), 'avaliação antiga sem testes');
+  const ex = A.avaliacoesExemplo('x');
+  assert.deepEqual(ex.map(v => v.testes.flexao), [12, 16, 21], 'aluna de exemplo com testes');
+}
+
 // Guia de uso revisado a cada versão (pedido do dono em 09/11/2026)
 {
   const versao = require('../package.json').version;
   assert.equal(A.GUIA_REVISADO_NA_VERSAO, versao, `Versão ${versao}: revise o guia de primeiro acesso (PASSOS_TUTORIAL_*) e suba GUIA_REVISADO_NA_VERSAO no app.js.`);
   const textoGuia = passos => passos.map(p => [p.titulo, p.texto, ...p.itens].join(' ')).join(' ').toLowerCase();
   const personal = textoGuia(A.PASSOS_TUTORIAL_PERSONAL), aluno = textoGuia(A.PASSOS_TUTORIAL_ALUNO);
-  for (const t of ['outro exercício', 'zonas de treino']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
-  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas');
+  for (const t of ['outro exercício', 'zonas de treino', '7 etapas', 'flexiteste', 'cooper']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
+  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas'); assert.ok(aluno.includes('testes físicos'), 'guia do aluno sem os testes');
   assert.ok(!personal.includes('etnia'), 'guia ainda fala de etnia');
 }
 

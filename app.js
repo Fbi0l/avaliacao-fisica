@@ -10,7 +10,7 @@ const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-al
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
-  : { ZONAS_CARGA, zonaCarga, cargasPorZona, zonasFC, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
+  : { FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, paceTexto, ZONAS_CARGA, zonaCarga, cargasPorZona, zonasFC, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -63,10 +63,12 @@ const FAIXAS = {
   glicose: [20, 900, 'Glicose entre 20 e 900 mg/dL.'], triglicerideos: [10, 5000, 'Triglicerídeos entre 10 e 5000 mg/dL.'], ldl: [5, 600, 'LDL entre 5 e 600 mg/dL.'], hdl: [5, 200, 'HDL entre 5 e 200 mg/dL.']
 };
 
+/** Campos dos testes físicos no rascunho (texto, como digitado). */
+const testesVazios = () => ({ flexao: '', abdominal: '', aerTipo: '', aerDist: '', aerTempo: '', aerFc: '', flex: {} });
 /** Rascunho vazio do formulário (texto, como digitado). */
 function rascunhoVazio(data, altura) {
   return { data, peso: '', altura: altura == null ? '' : String(altura).replace('.', ','), fc_repouso: '', pas: '', pad: '', glicose: '', triglicerideos: '', ldl: '', hdl: '',
-    per: {}, dob1: {}, dob2: {}, equacao: 'faulkner', supC: '', supR: '', legC: '', legR: '', outros: [], parecer: '' };
+    per: {}, dob1: {}, dob2: {}, equacao: 'faulkner', supC: '', supR: '', legC: '', legR: '', outros: [], testes: testesVazios(), parecer: '' };
 }
 /** Rascunho a partir de uma avaliação salva (para editar). */
 function rascunhoDe(av) {
@@ -78,9 +80,50 @@ function rascunhoDe(av) {
   r.supC = t(av.forca?.supino?.carga); r.supR = t(av.forca?.supino?.reps);
   r.legC = t(av.forca?.leg_press?.carga); r.legR = t(av.forca?.leg_press?.reps);
   r.outros = (Array.isArray(av.forca?.outros) ? av.forca.outros : []).map(o => ({ nome: o.nome || '', c: t(o.carga), r: t(o.reps) }));
+  const ts = av.testes || {};
+  r.testes = { flexao: t(ts.flexao), abdominal: t(ts.abdominal), aerTipo: ts.aerobico?.tipo || '', aerDist: t(ts.aerobico?.distancia),
+    aerTempo: t(ts.aerobico?.tempo), aerFc: t(ts.aerobico?.fc_final), flex: Object.fromEntries(Object.entries(ts.flexiteste || {}).map(([k, v]) => [k, String(v)])) };
   r.equacao = K.equacaoDe(av);
   r.parecer = av.parecer || '';
   return r;
+}
+
+/** Testes físicos do rascunho para o registro, com as mesmas faixas do banco (privado.testes_valida). */
+function montarTestes(t, erros) {
+  const out = {};
+  for (const [k, nome] of [['flexao', 'Flexão de braço'], ['abdominal', 'Abdominal']]) {
+    const v = K.lerNumero(t[k]);
+    if (v == null) continue;
+    if (!Number.isInteger(v) || v < 0 || v > 150) { erros.push(`${nome}: repetições inteiras, de 0 a 150.`); continue; }
+    out[k] = v;
+  }
+  if (t.aerTipo === 'cooper' || t.aerTipo === 'livre') {
+    const dist = K.lerNumero(String(t.aerDist ?? '').replace(/\.(?=\d{3}(?!\d))/g, '')); // 2.400 m = 2400
+    const tempo = K.lerNumero(t.aerTempo), fc = K.lerNumero(t.aerFc);
+    const a = { tipo: t.aerTipo };
+    let okAer = true;
+    if (dist == null || Number.isNaN(dist) || dist < 100 || dist > 10000) { erros.push('Teste aeróbico: distância em metros, de 100 a 10000.'); okAer = false; }
+    else a.distancia = Math.round(dist);
+    if (t.aerTipo === 'livre') {
+      if (tempo == null || Number.isNaN(tempo) || tempo < 1 || tempo > 300) { erros.push('Teste aeróbico: tempo em minutos, de 1 a 300.'); okAer = false; }
+      else a.tempo = Math.round(tempo * 10) / 10;
+    }
+    if (fc != null) {
+      if (!Number.isInteger(fc) || fc < 40 || fc > 230) { erros.push('Teste aeróbico: FC final entre 40 e 230 bpm.'); okAer = false; }
+      else a.fc_final = fc;
+    }
+    if (okAer) out.aerobico = a;
+  }
+  const flex = {};
+  for (const [k] of K.FLEXITESTE) {
+    const v = t.flex?.[k];
+    if (v == null || v === '') continue;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > 4) { erros.push(`Flexiteste ${k}: nota de 0 a 4.`); continue; }
+    flex[k] = n;
+  }
+  if (Object.keys(flex).length) out.flexiteste = flex;
+  return out;
 }
 
 /** Converte o rascunho no registro da tabela avaliacoes, com as mesmas faixas do banco. */
@@ -144,6 +187,7 @@ function montarAvaliacao(r, hoje = hojeISO()) {
   }
   if (outros.length > K.MAX_OUTROS_EXERCICIOS) erros.push(`No máximo ${K.MAX_OUTROS_EXERCICIOS} exercícios além do supino e do leg press.`);
   else if (outros.length) reg.forca.outros = outros;
+  reg.testes = montarTestes(r.testes || testesVazios(), erros);
   const parecer = String(r.parecer || '').trim();
   if (parecer.length > 4000) erros.push('O parecer pode ter no máximo 4000 caracteres.');
   reg.parecer = parecer || null;
@@ -181,7 +225,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '0.6.0';
+const GUIA_REVISADO_NA_VERSAO = '0.7.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -189,12 +233,12 @@ const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '◉', titulo: '1. Seus alunos',
     texto: 'A lista de alunos fica ao lado (no celular, no topo). Toque num aluno para abrir a ficha dele.',
     itens: ['“+ Novo” cadastra um aluno: nome, sexo e data de nascimento.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
-  { icone: '＋', titulo: '2. Nova avaliação em 6 etapas',
-    texto: 'Básico, exames, perímetros, dobras, força e parecer. Só peso e altura são obrigatórios.',
-    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.'] },
+  { icone: '＋', titulo: '2. Nova avaliação em 7 etapas',
+    texto: 'Básico, exames, perímetros, dobras, força, testes e parecer. Só peso e altura são obrigatórios.',
+    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.', 'Na etapa Testes: flexão de braço, abdominal em 1 minuto, teste aeróbico (Cooper ou distância e tempo livres) e flexiteste, todos opcionais.'] },
   { icone: '▤', titulo: '3. O resultado completo',
     texto: 'Cada avaliação vira uma ficha com tudo calculado.',
-    itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.', 'Zonas de treino: faixas de frequência cardíaca e de carga (% do 1RM), com uma calculadora de carga.'] },
+    itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.', 'Testes físicos com classificação: flexão, abdominal, VO₂máx do Cooper e notas do flexiteste.', 'Zonas de treino: faixas de frequência cardíaca e de carga (% do 1RM), com uma calculadora de carga.'] },
   { icone: '↗', titulo: '4. Evolução e comparação',
     texto: 'Na ficha do aluno, as abas mostram a evolução em gráficos e comparam quaisquer duas avaliações.',
     itens: ['Verde quando a mudança vai na direção desejada (por exemplo, gordura caindo).', 'Abra a Mariana: ela já tem 3 avaliações para você ver os gráficos.'] },
@@ -213,7 +257,7 @@ const PASSOS_TUTORIAL_ALUNO = [
     texto: 'No topo aparecem os principais resultados da última avaliação: gordura, massa muscular e peso.',
     itens: ['As setas mostram o que mudou desde a primeira avaliação.', 'Verde quer dizer que mudou na direção boa.'] },
   { icone: '↗', titulo: 'Evolução, zonas e recado',
-    texto: 'Mais abaixo ficam os gráficos de evolução, as suas zonas de treino e o recado do seu personal.',
+    texto: 'Mais abaixo ficam os gráficos de evolução, os seus testes físicos, as zonas de treino e o recado do seu personal.',
     itens: ['Zonas de frequência cardíaca: em que batimentos treinar cada intensidade.', 'Zonas de carga: digite a carga de um exercício e veja se está em resistência, hipertrofia ou força.', 'A cada nova avaliação, tudo se atualiza sozinho.'] },
   { icone: '?', titulo: 'Dúvidas e seus dados',
     texto: 'Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.',
@@ -230,25 +274,28 @@ const PERIM_EX = ['bracoD', 'bracoE', 'antD', 'antE', 'torax', 'cintura', 'abdom
 const DOBRA_EX = ['triceps', 'subesc', 'biceps', 'iliaca', 'supraesp', 'abdominal', 'coxa', 'panturrilha'];
 /** As 3 avaliações fictícias da Mariana (junho, agosto e outubro de 2026), prontas para gravar. */
 function avaliacoesExemplo(alunoId) {
-  const av = (data, peso, fc, pas, pad, ex, per, dob, sup, leg, agach, parecer, equacao = 'faulkner') => ({
+  const av = (data, peso, fc, pas, pad, ex, per, dob, sup, leg, agach, testes, parecer, equacao = 'faulkner') => ({
     aluno_id: alunoId, data, peso, altura: 1.65, fc_repouso: fc, pas, pad,
     glicose: ex[0], triglicerideos: ex[1], ldl: ex[2], hdl: ex[3],
     perimetros: Object.fromEntries(PERIM_EX.map((k, i) => [k, per[i]])),
     dobras: Object.fromEntries(DOBRA_EX.map((k, i) => [k, [dob[i][0], dob[i][1] ?? null].filter((x, j) => j === 0 || x != null)])),
-    forca: { supino: { carga: sup[0], reps: sup[1] }, leg_press: { carga: leg[0], reps: leg[1] }, outros: [{ nome: 'Agachamento livre', carga: agach[0], reps: agach[1] }] },
+    forca: { supino: { carga: sup[0], reps: sup[1] }, leg_press: { carga: leg[0], reps: leg[1] }, outros: [{ nome: 'Agachamento livre', carga: agach[0], reps: agach[1] }] }, testes,
     equacao_gordura: equacao, parecer });
   return [
     av('2026-06-08', 66.4, 74, 124, 82, [96, 142, 128, 52],
       [28.4, 28.0, 23.6, 23.3, 88.0, 74.5, 82.0, 102.5, 59.5, 59.0, 55.0, 54.6, 36.0, 35.8],
       [[26, 26.4], [22, 21.6], [11], [26, 26.2], [15], [30, 30.4], [31], [19]], [30, 8], [120, 10], [40, 8],
+      { flexao: 12, abdominal: 24, aerobico: { tipo: 'cooper', distancia: 1750 }, flexiteste: { IV: 2, V: 2, IX: 2, XII: 3, XIX: 2 } },
       'Primeira avaliação. Boa disposição e técnica razoável nos testes.\nPrioridade: reduzir gordura central e ganhar força de membros superiores.\nPróximos passos: treino 4x por semana e cardio leve 2x.'),
     av('2026-08-10', 64.9, 70, 120, 80, [92, 128, 121, 55],
       [28.6, 28.3, 23.8, 23.5, 87.0, 72.8, 80.1, 101.0, 59.6, 59.3, 55.3, 55.0, 36.2, 36.0],
       [[24], [20], [10], [23], [13], [27], [29], [18]], [34, 8], [140, 10], [46, 8],
+      { flexao: 16, abdominal: 28, aerobico: { tipo: 'cooper', distancia: 1900 }, flexiteste: { IV: 2, V: 3, IX: 2, XII: 3, XIX: 3 } },
       'Boa evolução em dois meses: menos gordura central e mais força no supino.\nManter a frequência e aumentar a carga do leg press aos poucos.'),
     av('2026-10-14', 63.8, 66, 116, 76, [89, 112, 115, 58],
       [29.0, 28.6, 24.0, 23.7, 86.5, 71.0, 78.5, 100.0, 59.8, 59.5, 55.6, 55.2, 36.4, 36.2],
       [[22], [19], [9], [21], [12], [24], [27], [17]], [38, 8], [160, 10], [52, 8],
+      { flexao: 21, abdominal: 31, aerobico: { tipo: 'cooper', distancia: 2050, fc_final: 176 }, flexiteste: { IV: 3, V: 3, IX: 3, XII: 3, XIX: 3 } },
       'Excelente adesão. Gordura em queda constante e massa muscular subindo.\nFC de repouso melhorou (66 bpm). Próxima fase: hipertrofia de membros inferiores.')
   ];
 }
@@ -274,7 +321,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, sentido };
 } else {
   iniciar();
 }
@@ -471,10 +518,36 @@ function iniciar() {
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
           Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) ),
+      cardTestes(c.testes),
       secaoZonas({ fc: c.zonasFC, exercicios: c.exercicios1RM, paraAluno: false }),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || 'Sem parecer.'))
     ];
   }
+  /** Testes físicos de uma avaliação: resistência, aeróbico e flexiteste. Nada aplicado, nada mostrado. */
+  function cardTestes(tt) {
+    const a = tt.aerobico;
+    const linhas = [
+      tt.flexao == null ? null : h('tr', null, h('td', null, 'Flexão de braço ', h('span', { class: 'sub' }, '(até a falha)')), h('td', { class: 'n' }, `${tt.flexao} rep.`), h('td', null, chip(tt.classeFlexao))),
+      tt.abdominal == null ? null : h('tr', null, h('td', null, 'Abdominal ', h('span', { class: 'sub' }, '(1 minuto)')), h('td', { class: 'n' }, `${tt.abdominal} rep.`), h('td', null, chip(tt.classeAbdominal))),
+      !a ? null : h('tr', null, h('td', null, a.tipo === 'cooper' ? 'Cooper (12 min)' : `Corrida livre (${fmt(a.tempo, Number.isInteger(a.tempo) ? 0 : 1)} min)`),
+        h('td', { class: 'n' }, `${fmt(a.distancia, 0)} m`), h('td', null, h('span', { class: 'sub num' }, `${K.paceTexto(a.pace) ?? '—'} · ${fmt(a.kmh)} km/h`))),
+      tt.vo2 == null ? null : h('tr', null, h('td', null, 'VO₂máx estimado'), h('td', { class: 'n' }, `${fmt(tt.vo2)} ml/kg/min`), h('td', null, chip(tt.classeVO2))),
+      a?.fcFinal == null ? null : h('tr', null, h('td', null, 'FC ao final do teste'), h('td', { class: 'n' }, `${a.fcFinal} bpm`), h('td'))
+    ].filter(Boolean);
+    const flex = tt.flexiteste;
+    if (!linhas.length && !flex.length) return null;
+    return h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Testes físicos'),
+      h('div', { class: 'dois-zonas' },
+        h('div', null, linhas.length ? h('div', { class: 'tabela' }, h('table', null, h('tbody', null, linhas))) : h('p', { class: 'sub' }, 'Sem testes de resistência ou aeróbico nesta avaliação.'),
+          linhas.length ? h('p', { class: 'aviso' }, 'Flexão: CSEP/ACSM (mulheres com os joelhos no chão). Abdominal: Pollock e Wilmore (1993). VO₂máx pela distância do Cooper, classificado pelo Cooper Institute.') : null),
+        h('div', null, flex.length ? [
+          h('h4', { class: 'sub-titulo' }, `Flexiteste · ${tt.flexindice != null ? `Flexíndice ${tt.flexindice} de 80` : `soma ${tt.somaFlexiteste} de ${flex.length * 4} (${flex.length} movimentos)`}`),
+          h('ul', { class: 'lista-flex' }, flex.map(m => h('li', null, h('span', null, h('span', { class: 'num fraco' }, m.chave), ` ${m.articulacao}: ${m.nome.toLowerCase()}`),
+            h('span', { class: 'notas', 'aria-label': `nota ${m.nota} de 4` }, [0, 1, 2, 3].map(i => h('span', { class: i < m.nota ? 'cheia' : '' })), h('b', { class: 'num' }, m.nota))))),
+          h('p', { class: 'aviso' }, 'Nota de 0 (amplitude muito pequena) a 4 (muito grande), pelo Flexiteste de Araújo.')
+        ] : h('p', { class: 'sub' }, 'Flexiteste não aplicado nesta avaliação.'))));
+  }
+
   /** kg sem casa decimal quando é inteiro (32 em vez de 32,0). */
   const kgCurto = v => Number.isInteger(v) ? fmt(v, 0) : fmt(v);
   /** Zonas de treino: FC (Karvonen ou % da FC máxima) e carga por % do 1RM, com calculadora. */
@@ -531,7 +604,10 @@ function iniciar() {
     { t: 'Massa muscular', un: 'kg', des: 1, f: (v, c) => c.massaMuscular },
     { t: 'Σ 8 dobras', un: 'mm', des: -1, f: (v, c) => c.somaDobras },
     { t: 'Cintura', un: 'cm', des: -1, f: v => v.perimetros?.cintura ?? null },
-    { t: '1RM supino', un: 'kg', des: 1, f: (v, c) => c.supino1RM }
+    { t: '1RM supino', un: 'kg', des: 1, f: (v, c) => c.supino1RM },
+    { t: 'Flexão de braço', un: 'rep.', des: 1, f: (v, c) => c.testes.flexao },
+    { t: 'Abdominal (1 min)', un: 'rep.', des: 1, f: (v, c) => c.testes.abdominal },
+    { t: 'VO₂máx (Cooper)', un: 'ml/kg/min', des: 1, f: (v, c) => c.testes.vo2 }
   ];
   function grafico(a, avs, sr) {
     const pts = avs.map(v => ({ d: v.data, y: sr.f(v, K.calcular(a, v)) })).filter(p => Number.isFinite(p.y));
@@ -554,6 +630,12 @@ function iniciar() {
   }
 
   /* ----- Comparar ----- */
+  /** Flexiteste na comparação: cada movimento testado em alguma das duas avaliações. */
+  function linhasFlexiteste(ca, cb) {
+    const nota = (c, k) => c.testes.flexiteste.find(m => m.chave === k)?.nota ?? null;
+    return K.FLEXITESTE.filter(([k]) => nota(ca, k) != null || nota(cb, k) != null)
+      .map(([k, nome, art]) => [`Flexiteste ${k} · ${art.toLowerCase()}, ${nome.split(' (')[0].toLowerCase()} (0 a 4)`, nota(ca, k), nota(cb, k), 1]);
+  }
   /** Linhas de 1RM dos outros exercícios, casando pelo nome (sem acento nem maiúsculas) entre as duas avaliações. */
   function linhasOutros(ca, cb) {
     const mapa = new Map();
@@ -573,7 +655,9 @@ function iniciar() {
       const linhas = [['Peso (kg)', +A.peso, +B.peso, 0], ['Gordura (%)', ca.gordura, cb.gordura, -1], ['Massa muscular (kg)', ca.massaMuscular, cb.massaMuscular, 1], ['Massa gorda (kg)', ca.massaGorda, cb.massaGorda, -1],
         ['Σ 8 dobras (mm)', ca.somaDobras, cb.somaDobras, -1], ['Dobras centrais (mm)', ca.dobrasCentrais, cb.dobrasCentrais, -1],
         ...K.PERIMETROS.map(([k, n]) => [`${n} (cm)`, A.perimetros?.[k], B.perimetros?.[k], ['cintura', 'abdomen'].includes(k) ? -1 : 0]),
-        ['1RM supino (kg)', ca.supino1RM, cb.supino1RM, 1], ['1RM leg press (kg)', ca.legPress1RM, cb.legPress1RM, 1], ...linhasOutros(ca, cb), ['FC de repouso (bpm)', A.fc_repouso, B.fc_repouso, -1], ['Pressão sistólica (mmHg)', A.pas, B.pas, -1]]
+        ['1RM supino (kg)', ca.supino1RM, cb.supino1RM, 1], ['1RM leg press (kg)', ca.legPress1RM, cb.legPress1RM, 1], ...linhasOutros(ca, cb),
+        ['Flexão de braço (rep.)', ca.testes.flexao, cb.testes.flexao, 1], ['Abdominal em 1 min (rep.)', ca.testes.abdominal, cb.testes.abdominal, 1],
+        ['VO₂máx Cooper (ml/kg/min)', ca.testes.vo2, cb.testes.vo2, 1], ...linhasFlexiteste(ca, cb), ['FC de repouso (bpm)', A.fc_repouso, B.fc_repouso, -1], ['Pressão sistólica (mmHg)', A.pas, B.pas, -1]]
         .filter(([, x, y]) => x != null || y != null);
       corpo.replaceChildren(...linhas.map(([n, x, y, d]) => { const dif = x != null && y != null ? y - x : null;
         return h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(x)), h('td', { class: 'n' }, fmt(y)), h('td', { class: 'n' }, dif == null ? '—' : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '+' : ''}${fmt(dif)}`))); }));
@@ -585,7 +669,7 @@ function iniciar() {
   }
 
   /* ----- Nova avaliação / editar, em etapas ----- */
-  const PASSOS = ['Básico', 'Exames', 'Perímetros', 'Dobras', 'Força', 'Parecer'];
+  const PASSOS = ['Básico', 'Exames', 'Perímetros', 'Dobras', 'Força', 'Testes', 'Parecer'];
   function telaFormulario(a, existente) {
     const chave = existente ? 'e:' + existente.id : 'n:' + a.id;
     if (est.rascunhoChave !== chave) {
@@ -637,7 +721,41 @@ function iniciar() {
         h('button', { class: 'btn', type: 'button', disabled: cheio, onclick: () => { r.outros.push({ nome: '', c: '', r: '' }); refazer(true); } }, '+ Outro exercício'),
         cheio ? h('p', { class: 'sub' }, `Até ${K.MAX_OUTROS_EXERCICIOS} exercícios além do supino e do leg press.`) : null);
     }
-    if (p === 5) corpo = h('label', { class: 'campo' }, ['Parecer descritivo ', h('span', { class: 'fraco' }, '(o aluno também vê este texto)')],
+    if (p === 5) {
+      const t = r.testes = r.testes || testesVazios();
+      const ajudaSexo = a.sexo === 'F' ? 'Mulher: flexão com os joelhos no chão.' : 'Homem: flexão normal, apoiado nos pés.';
+      const camposAer = h('div', { class: 'campos' });
+      const desenharAer = () => camposAer.replaceChildren(...(t.aerTipo ? [
+        campo(t.aerTipo === 'cooper' ? 'Distância em 12 min (m)' : 'Distância (m)', t, 'aerDist', { modo: 'numeric' }),
+        t.aerTipo === 'livre' ? campo('Tempo (min)', t, 'aerTempo') : null,
+        campo(['FC ao final ', h('span', { class: 'fraco' }, '(bpm, opcional)')], t, 'aerFc', { modo: 'numeric' })].filter(Boolean) : []));
+      desenharAer();
+      const contagem = h('span', { class: 'sub' });
+      const contar = () => { const n = K.FLEXITESTE.filter(([k]) => t.flex[k] !== undefined && t.flex[k] !== '').length;
+        contagem.textContent = `${n} de 20 movimentos${n && n < K.MIN_FLEXITESTE_SUGERIDO ? ` (sugestão: pelo menos ${K.MIN_FLEXITESTE_SUGERIDO})` : ''}`; };
+      contar();
+      let articulacao = null;
+      corpo = h('div', null, h('p', { class: 'sub' }, 'Opcional. Preencha só os testes que aplicou.'),
+        h('h3', { class: 'titulo-secao' }, 'Resistência muscular'),
+        h('div', { class: 'campos' },
+          campo(['Flexão de braço ', h('span', { class: 'fraco' }, '(repetições até a falha)')], t, 'flexao', { modo: 'numeric' }),
+          campo(['Abdominal ', h('span', { class: 'fraco' }, '(repetições em 1 minuto)')], t, 'abdominal', { modo: 'numeric' })),
+        h('p', { class: 'sub' }, `${ajudaSexo} Classificação da flexão pela CSEP/ACSM e do abdominal por Pollock e Wilmore.`),
+        h('h3', { class: 'titulo-secao outros-titulo' }, 'Teste aeróbico'),
+        h('label', { class: 'campo equacao' }, 'Tipo de teste', h('select', { onchange: ev => { t.aerTipo = ev.target.value; desenharAer(); vivo(); } },
+          [['', 'Não aplicado'], ['cooper', 'Cooper (12 minutos)'], ['livre', 'Distância e tempo livres']].map(([v, n]) => h('option', { value: v, selected: t.aerTipo === v }, n)))),
+        camposAer,
+        h('p', { class: 'sub' }, 'No Cooper, o app estima o VO₂máx e classifica (Cooper Institute). No livre, mostra o ritmo (pace) e a velocidade para acompanhar a evolução.'),
+        h('h3', { class: 'titulo-secao outros-titulo' }, 'Flexiteste'),
+        h('p', { class: 'sub' }, 'Nota de 0 (amplitude muito pequena) a 4 (muito grande) em cada movimento testado. Deixe "—" nos que não testou. ', contagem),
+        h('div', { class: 'flexiteste' }, K.FLEXITESTE.map(([k, nome, art]) => {
+          const cab = art !== articulacao ? h('div', { class: 'flex-art' }, art) : null; articulacao = art;
+          return [cab, h('label', { class: 'flex-mov' }, h('span', null, h('span', { class: 'num fraco' }, k), ' ', nome),
+            h('select', { 'aria-label': `${art}: ${nome}`, onchange: ev => { if (ev.target.value === '') delete t.flex[k]; else t.flex[k] = ev.target.value; contar(); } },
+              [['', '—'], ...[0, 1, 2, 3, 4].map(n => [String(n), String(n)])].map(([v, n]) => h('option', { value: v, selected: (t.flex[k] ?? '') === v }, n))))];
+        })));
+    }
+    if (p === 6) corpo = h('label', { class: 'campo' }, ['Parecer descritivo ', h('span', { class: 'fraco' }, '(o aluno também vê este texto)')],
       h('textarea', { maxlength: '4000', oninput: ev => { r.parecer = ev.target.value; } }, r.parecer));
     const erro = h('p', { class: 'msg', role: 'alert' });
     const painel = h('aside', { class: 'ao-vivo', 'aria-live': 'polite' });
@@ -852,6 +970,7 @@ function iniciar() {
         frase('Sua força no supino', (c.supino1RM ?? NaN) - (c0.supino1RM ?? NaN), 'kg', 1, 'aumentou', 'diminuiu'),
         c.pressao ? h('li', null, `Sua pressão na última avaliação: ${ult.pas}/${ult.pad} (${c.pressao.texto.toLowerCase()}).`) : null)) : null,
       varias ? h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Seus gráficos'), h('div', { class: 'graficos' }, SERIES.filter(sr => ['Gordura', 'Massa muscular', 'Peso', 'Cintura'].includes(sr.t)).map(sr => grafico(eu, avs, sr)))) : null,
+      (v => v && cardTestes(K.calcular(eu, v).testes))([...avs].reverse().find(v => v.testes && Object.keys(v.testes).length)),
       (z => z && secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }))(zonasDoAluno(eu, avs)),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
       h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`));
