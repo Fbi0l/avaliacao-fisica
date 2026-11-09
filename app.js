@@ -293,7 +293,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.0.0';
+const GUIA_REVISADO_NA_VERSAO = '1.0.1';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -803,7 +803,8 @@ function iniciar() {
       est.passo = 0; est.rascunhoChave = chave;
     }
     const r = est.rascunho, p = est.passo;
-    const campo = (rot, obj, k, extra = {}) => h('label', { class: 'campo' }, rot,
+    // O rótulo vai num só <span>: assim "Peso (kg)" fica na mesma linha e os campos lado a lado se alinham.
+    const campo = (rot, obj, k, extra = {}) => h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, rot),
       h('input', { inputMode: extra.modo || 'decimal', value: obj[k] ?? '', autocomplete: 'off', oninput: ev => { obj[k] = ev.target.value; vivo(); }, ...extra.attrs }));
     let corpo;
     if (p === 0) corpo = h('div', null, h('p', { class: 'sub' }, 'Nenhuma etapa é obrigatória: preencha só o que mediu. Sem peso e altura, o app não calcula IMC, massa gorda, massa muscular e força relativa, e o resto sai normal.'), h('div', { class: 'campos' },

@@ -2,6 +2,13 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.0.1 — Ajustes no celular
+
+- Campos do formulário alinhados: o rótulo e a unidade ("Peso (kg)") ficam na mesma linha, e os campos lado a lado começam na mesma altura.
+- Selos dos cartões de resultado ("Bom volume muscular") quebram a linha em vez de sair do cartão; tabelas de perímetros e dobras cabem na largura do celular (régua de proporção menor).
+- Instalação no iPhone mais estável: identificador do app no manifesto e configurações de app de tela inicial como no Financeiro. Se o teclado não abrir no app instalado, apague o ícone e adicione de novo pelo Safari.
+- Guia de uso revisado (sem mudança de passos).
+
 ## Versão 1.0.0 — Mensagens
 
 - **Chat entre o aluno e o personal** (fase 5 das sugestões do professor). O personal tem o balão de mensagens no topo, com o número de não lidas, a lista de conversas (mais recentes primeiro; quem ainda não tem acesso aparece com "Convidar") e o botão **Mensagem** na ficha do aluno. O aluno ganhou a aba **Mensagens** embaixo e o atalho "Conversar com…" no Início.

@@ -1,4 +1,5 @@
 {
+  "id": "/avaliacao-fisica/",
   "name": "Avaliação Física",
   "short_name": "Avaliação",
   "description": "Avaliações físicas, evolução e acompanhamento de alunos.",
@@ -9,8 +10,21 @@
   "background_color": "#f6f3ef",
   "theme_color": "#f6f3ef",
   "icons": [
-    { "src": "assets/icone.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "assets/icone-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "assets/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

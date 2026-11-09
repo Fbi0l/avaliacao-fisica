@@ -3,9 +3,9 @@
    - NUNCA guarda nada do banco (login, alunos, avaliações): esses pedidos passam direto.
    - Rede primeiro: com internet, usa sempre a versão mais nova publicada. */
 'use strict';
-const VERSAO = 'avaliacao-v1.0.0';
+const VERSAO = 'avaliacao-v1.0.1';
 const ARQUIVOS = [
-  './', './index.html', './app.js?v=1.0.0', './calculos.js?v=1.0.0', './styles.css?v=1.0.0',
+  './', './index.html', './app.js?v=1.0.1', './calculos.js?v=1.0.1', './styles.css?v=1.0.1',
   './manifest.webmanifest', './assets/icone.svg', './assets/icone-192.png', './assets/icone-512.png',
   './assets/fonts/work-sans-latin-400-normal.woff2', './assets/fonts/work-sans-latin-500-normal.woff2', './assets/fonts/work-sans-latin-600-normal.woff2',
   './assets/fonts/outfit-latin-500-normal.woff2', './assets/fonts/outfit-latin-600-normal.woff2', './assets/fonts/outfit-latin-700-normal.woff2',
