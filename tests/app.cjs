@@ -89,6 +89,20 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.deepEqual(ex.map(v => v.forca.outros[0].carga), [40, 46, 52]);
 }
 
+// Zonas no painel do aluno: 1RM mais recente de cada exercício e FC da última avaliação com repouso
+{
+  const al = { sexo: 'M', nascimento: '1990-01-01' };
+  const avs = [
+    { data: '2026-06-01', peso: 80, altura: 1.8, fc_repouso: 70, perimetros: {}, dobras: {}, forca: { supino: { carga: 60, reps: 1 }, outros: [{ nome: 'Rosca Direta', carga: 20, reps: 1 }] } },
+    { data: '2026-09-01', peso: 80, altura: 1.8, fc_repouso: null, perimetros: {}, dobras: {}, forca: { supino: { carga: 70, reps: 1 } } }
+  ];
+  const z = A.zonasDoAluno(al, avs);
+  assert.deepEqual(z.exercicios.map(e => [e.nome, e.rm, e.data]), [['Supino reto', 70, '2026-09-01'], ['Rosca Direta', 20, '2026-06-01']]);
+  assert.equal(z.fc.metodo, 'karvonen'); assert.equal(z.dataFC, '2026-06-01', 'usa a última com FC de repouso');
+  assert.equal(A.zonasDoAluno(al, []), null);
+  assert.equal(A.zonasDoAluno(al, [avs[1]]).fc.metodo, 'fcmax', 'sem nenhuma FC de repouso');
+}
+
 // Editar: rascunho a partir do salvo e de volta dá o mesmo registro
 const ida = A.montarAvaliacao(A.rascunhoDe({ ...registro }), '2026-11-04');
 assert.deepEqual(ida.erros, []); assert.deepEqual(ida.registro, registro);

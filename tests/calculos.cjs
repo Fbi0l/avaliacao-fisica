@@ -153,4 +153,29 @@ for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for
   assert.equal(C.chaveExercicio('Rosca  Diréta'), C.chaveExercicio('rosca direta'), 'compara sem acento nem maiúscula');
   assert.deepEqual(C.calcular(aluna, { ...av, forca: { outros: 'x' } }).outrosExercicios, [], 'formato inválido não quebra');
 }
-console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, faixas de gordura, pressão e exames.');
+// Zonas de FC: Karvonen com repouso; sem repouso, % da FC máxima
+{
+  const k = C.zonasFC(186, 66);
+  assert.equal(k.metodo, 'karvonen');
+  assert.deepEqual(k.zonas.map(z => [z.min, z.max]), [[126, 138], [138, 150], [150, 162], [162, 174], [174, 186]], '66 + 120 × %');
+  const m = C.zonasFC(186, null);
+  assert.equal(m.metodo, 'fcmax');
+  assert.deepEqual(m.zonas.map(z => [z.min, z.max]), [[93, 112], [112, 130], [130, 149], [149, 167], [167, 186]]);
+  assert.equal(C.zonasFC(186, 190).metodo, 'fcmax', 'repouso acima da máxima não usa Karvonen');
+  assert.equal(C.zonasFC(null, 60), null);
+  assert.equal(r.zonasFC.metodo, 'karvonen', 'avaliação com FC de repouso');
+  assert.equal(r.zonasFC.zonas[4].max, 186);
+}
+// Zonas de carga por % do 1RM
+{
+  assert.equal(C.zonaCarga(60, 100).chave, 'resistencia'); assert.equal(C.zonaCarga(66.9, 100).chave, 'resistencia');
+  assert.equal(C.zonaCarga(67, 100).chave, 'hipertrofia'); assert.equal(C.zonaCarga(80, 100).chave, 'hipertrofia');
+  assert.equal(C.zonaCarga(85, 100).chave, 'forca'); assert.equal(C.zonaCarga(110, 100).chave, 'forca', 'acima do 1RM ainda é força');
+  perto(C.zonaCarga(80, 100).pct, 80, 1e-9, '% do 1RM');
+  assert.equal(C.zonaCarga(null, 100), null); assert.equal(C.zonaCarga(10, 0), null);
+  assert.deepEqual(C.cargasPorZona(100).map(z => [z.min, z.max]), [[null, 67], [67, 85], [85, 100]]);
+  assert.deepEqual(C.cargasPorZona(48.13).map(z => [z.min, z.max]), [[null, 32], [32, 41], [41, 48]], 'arredonda de 0,5 em 0,5 kg');
+  assert.equal(C.cargasPorZona(null), null);
+  assert.deepEqual(r.exercicios1RM.map(e => e.nome), ['Supino reto'], 'só exercícios testados');
+}
+console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, faixas de gordura, pressão e exames.');

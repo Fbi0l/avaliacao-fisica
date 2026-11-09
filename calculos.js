@@ -1,7 +1,7 @@
 /* Cálculos da avaliação física. Funções puras: recebem as medidas e devolvem os resultados.
    Nada aqui acessa a tela ou o banco; tudo é testado em tests/calculos.cjs.
    Referências: Lee et al. (2000) massa muscular; Faulkner (1968) e Petroski (1995) % de gordura; Ross e Wilson (1974)
-   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
+   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Karvonen (1957) zonas de FC; NSCA (Baechle e Earle, 2008) zonas de carga por % do 1RM; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
 'use strict';
 
 const PERIMETROS = [['bracoD', 'Braço D'], ['bracoE', 'Braço E'], ['antD', 'Antebraço D'], ['antE', 'Antebraço E'], ['torax', 'Tórax'], ['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['coxaSupD', 'Coxa superior D'], ['coxaSupE', 'Coxa superior E'], ['coxaMedD', 'Coxa média D'], ['coxaMedE', 'Coxa média E'], ['pantD', 'Panturrilha D'], ['pantE', 'Panturrilha E']];
@@ -112,6 +112,42 @@ function umRM(carga, reps) {
 /** FC máxima estimada por Tanaka, Monahan e Seals (2001): 208 − 0,7 × idade, arredondada. */
 function fcMaximaTanaka(idade) { return ok(idade) ? Math.round(208 - 0.7 * idade) : null; }
 
+/** Zonas de FC. Com a FC de repouso, Karvonen (% da FC de reserva + repouso); sem ela, % da FC máxima.
+    Faixas usuais de 5 zonas, A REVISAR com o professor. */
+const ZONAS_FC = [
+  { zona: 1, nome: 'Recuperação', de: 50, ate: 60, uso: 'aquecimento, volta à calma, recuperação ativa' },
+  { zona: 2, nome: 'Aeróbico leve', de: 60, ate: 70, uso: 'base aeróbica e queima de gordura, conversa fácil' },
+  { zona: 3, nome: 'Aeróbico moderado', de: 70, ate: 80, uso: 'condicionamento, respiração mais forte' },
+  { zona: 4, nome: 'Limiar', de: 80, ate: 90, uso: 'ritmo forte e sustentado, fala difícil' },
+  { zona: 5, nome: 'Máximo', de: 90, ate: 100, uso: 'tiros curtos, esforço máximo' }
+];
+function zonasFC(fcMaxima, fcRepouso) {
+  if (!ok(fcMaxima)) return null;
+  const karvonen = ok(fcRepouso) && fcRepouso < fcMaxima;
+  const bpm = pct => Math.round(karvonen ? fcRepouso + (fcMaxima - fcRepouso) * pct / 100 : fcMaxima * pct / 100);
+  return { metodo: karvonen ? 'karvonen' : 'fcmax', zonas: ZONAS_FC.map(z => ({ ...z, min: bpm(z.de), max: bpm(z.ate) })) };
+}
+
+/** Zonas de carga por % do 1RM (NSCA): faixas usuais, A REVISAR com o professor. */
+const ZONAS_CARGA = [
+  { chave: 'resistencia', nome: 'Resistência muscular', curto: 'Resistência', de: 0, ate: 67, reps: '12 ou mais repetições' },
+  { chave: 'hipertrofia', nome: 'Hipertrofia', curto: 'Hipertrofia', de: 67, ate: 85, reps: '6 a 12 repetições' },
+  { chave: 'forca', nome: 'Força', curto: 'Força', de: 85, ate: 100, reps: 'até 6 repetições' }
+];
+/** Em que zona está uma carga, dado o 1RM. Acima de 100% ainda é Força (o 1RM é estimado). */
+function zonaCarga(carga, rm) {
+  if (!ok(carga) || !ok(rm) || carga <= 0 || rm <= 0) return null;
+  const pct = carga / rm * 100;
+  const z = ZONAS_CARGA.find(x => pct < x.ate) || ZONAS_CARGA.at(-1);
+  return { pct, ...z };
+}
+/** Faixas de carga (kg) de cada zona para um 1RM, arredondadas de 0,5 em 0,5 kg. */
+function cargasPorZona(rm) {
+  if (!ok(rm) || rm <= 0) return null;
+  const kg = pct => Math.round(rm * pct / 100 * 2) / 2;
+  return ZONAS_CARGA.map(z => ({ ...z, min: z.de ? kg(z.de) : null, max: z.chave === 'forca' ? kg(100) : kg(z.ate) }));
+}
+
 /** Outros exercícios do teste de força, escolhidos pelo personal: sem tabela de classificação, só 1RM e 1RM ÷ peso. */
 const MAX_OUTROS_EXERCICIOS = 8;
 const SUGESTOES_EXERCICIOS = ['Agachamento livre', 'Remada curvada', 'Puxada frontal', 'Desenvolvimento', 'Rosca direta', 'Tríceps testa',
@@ -218,11 +254,13 @@ function calcular(aluno, av) {
     supino1RM: sup, supinoRelativo: ok(sup) ? sup / peso : null, classeSupino: ok(sup) ? classeSupino(sup / peso, aluno.sexo, idade) : null,
     legPress1RM: leg, legPressRelativo: ok(leg) ? leg / peso : null, classeLegPress: ok(leg) ? classeLegPress(leg / peso, aluno.sexo, idade) : null,
     outrosExercicios: outros,
+    exercicios1RM: [['Supino reto', sup], ['Leg press', leg], ...outros.map(o => [o.nome, o.rm])].filter(([, rm]) => ok(rm)).map(([nome, rm]) => ({ nome, rm })),
+    zonasFC: zonasFC(fcMaxima, ok(av.fc_repouso) ? Number(av.fc_repouso) : null),
     zPerimetros, zDobras
   };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
+  module.exports = { ZONAS_FC, ZONAS_CARGA, zonasFC, zonaCarga, cargasPorZona, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
     classeMassaMuscular, classeGordura, gorduraFaulkner, gorduraPetroski, EQUACOES_GORDURA, equacaoDe, massaMuscularLee, umRM, classeSupino, classeLegPress, classePressao, classeExame, calcular };
 }

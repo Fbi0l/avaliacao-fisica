@@ -2,6 +2,13 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.6.0 — Zonas de treino
+
+- Nova seção **Zonas de treino** no resultado de cada avaliação (personal) e no painel do aluno.
+- **Frequência cardíaca**: 5 zonas (recuperação, aeróbico leve, aeróbico moderado, limiar e máximo) em batimentos por minuto. Com a FC de repouso, pela FC de reserva (Karvonen) com a FC máxima de Tanaka; sem ela, pela % da FC máxima. No painel do aluno vale a avaliação mais recente com FC de repouso.
+- **Carga**: para cada exercício com 1RM (supino, leg press e os outros), as faixas em kg de resistência muscular (abaixo de 67%), hipertrofia (67% a 85%) e força (85% para cima), pela NSCA. Uma **calculadora** mostra em que zona está a carga usada no treino (por exemplo, 30 kg no supino = 62% do 1RM, resistência). No painel do aluno, vale o 1RM mais recente de cada exercício.
+- Faixas usuais, a revisar com o professor. O guia de primeiro acesso (personal e aluno) fala das zonas. Sem mudança no banco.
+
 ## Versão 0.5.0 — Sugestões do professor (parte 1)
 
 - **Teste de força em qualquer exercício**: na etapa Força, além do supino e do leg press, o botão **+ Outro exercício** acrescenta até 8 exercícios escolhidos pelo personal (com sugestões como agachamento, remada e puxada, ou qualquer nome). O app calcula o 1RM (Epley) e o 1RM ÷ peso. Esses exercícios não têm tabela de classificação; a comparação entre avaliações junta pelo nome (sem diferenciar acento ou maiúscula).

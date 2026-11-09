@@ -10,7 +10,7 @@ const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-al
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
-  : { PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
+  : { ZONAS_CARGA, zonaCarga, cargasPorZona, zonasFC, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -150,6 +150,17 @@ function montarAvaliacao(r, hoje = hojeISO()) {
   return { registro: reg, erros };
 }
 
+/** Para o painel do aluno: o 1RM mais recente de cada exercício (pelo nome, sem acento nem maiúscula) e as zonas de FC
+    da avaliação mais recente que tem FC de repouso (Karvonen); sem nenhuma, as da última avaliação (% da FC máxima). */
+function zonasDoAluno(aluno, avs) {
+  if (!avs.length) return null;
+  const calc = avs.map(v => ({ v, c: K.calcular(aluno, v) }));
+  const comRepouso = [...calc].reverse().find(x => x.v.fc_repouso != null) || calc.at(-1);
+  const exercicios = new Map();
+  for (const { v, c } of calc) for (const e of c.exercicios1RM) exercicios.set(K.chaveExercicio(e.nome), { ...e, data: v.data });
+  return { fc: comRepouso.c.zonasFC, dataFC: comRepouso.v.data, exercicios: [...exercicios.values()] };
+}
+
 /** Diferença com sentido: 'bom', 'ruim' ou 'neutro', conforme a direção desejada (1 sobe, -1 desce, 0 tanto faz). */
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
@@ -180,7 +191,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).'] },
   { icone: '▤', titulo: '3. O resultado completo',
     texto: 'Cada avaliação vira uma ficha com tudo calculado.',
-    itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.'] },
+    itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.', 'Zonas de treino: faixas de frequência cardíaca e de carga (% do 1RM), com uma calculadora de carga.'] },
   { icone: '↗', titulo: '4. Evolução e comparação',
     texto: 'Na ficha do aluno, as abas mostram a evolução em gráficos e comparam quaisquer duas avaliações.',
     itens: ['Verde quando a mudança vai na direção desejada (por exemplo, gordura caindo).', 'Abra a Mariana: ela já tem 3 avaliações para você ver os gráficos.'] },
@@ -198,9 +209,9 @@ const PASSOS_TUTORIAL_ALUNO = [
   { icone: '▤', titulo: 'Seus números',
     texto: 'No topo aparecem os principais resultados da última avaliação: gordura, massa muscular e peso.',
     itens: ['As setas mostram o que mudou desde a primeira avaliação.', 'Verde quer dizer que mudou na direção boa.'] },
-  { icone: '↗', titulo: 'Evolução e recado',
-    texto: 'Mais abaixo ficam os gráficos de evolução e o recado do seu personal.',
-    itens: ['A cada nova avaliação, tudo se atualiza sozinho.'] },
+  { icone: '↗', titulo: 'Evolução, zonas e recado',
+    texto: 'Mais abaixo ficam os gráficos de evolução, as suas zonas de treino e o recado do seu personal.',
+    itens: ['Zonas de frequência cardíaca: em que batimentos treinar cada intensidade.', 'Zonas de carga: digite a carga de um exercício e veja se está em resistência, hipertrofia ou força.', 'A cada nova avaliação, tudo se atualiza sozinho.'] },
   { icone: '?', titulo: 'Dúvidas e seus dados',
     texto: 'Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.',
     itens: ['Para rever este guia, toque em “?” no topo.'] }
@@ -260,7 +271,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }
@@ -457,9 +468,51 @@ function iniciar() {
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
           Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) ),
+      secaoZonas({ fc: c.zonasFC, exercicios: c.exercicios1RM, paraAluno: false }),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || 'Sem parecer.'))
     ];
   }
+  /** kg sem casa decimal quando é inteiro (32 em vez de 32,0). */
+  const kgCurto = v => Number.isInteger(v) ? fmt(v, 0) : fmt(v);
+  /** Zonas de treino: FC (Karvonen ou % da FC máxima) e carga por % do 1RM, com calculadora. */
+  function secaoZonas({ fc, exercicios, paraAluno, dataFC }) {
+    const tabelaFC = !fc ? null : h('div', null,
+      h('h4', { class: 'sub-titulo' }, 'Frequência cardíaca'),
+      h('div', { class: 'tabela' }, h('table', null,
+        h('thead', null, h('tr', null, h('th', null, 'Zona'), h('th', { class: 'n' }, 'bpm'), h('th', null, 'Para quê'))),
+        h('tbody', null, fc.zonas.map(z => h('tr', null, h('td', null, h('span', { class: `zona z${z.zona}` }, z.zona), ' ', z.nome, ' ', h('span', { class: 'sub' }, `${z.de}–${z.ate}%`)),
+          h('td', { class: 'n' }, `${z.min}–${z.max}`), h('td', { class: 'sub' }, z.uso)))))),
+      h('p', { class: 'aviso' }, fc.metodo === 'karvonen'
+        ? `Pela FC de reserva (Karvonen), com a FC máxima de Tanaka e a FC de repouso${dataFC ? ` de ${dataBR(dataFC)}` : ''}. Mudam a cada avaliação.`
+        : 'Pela % da FC máxima (Tanaka). Com a FC de repouso registrada na avaliação, as zonas ficam mais precisas (Karvonen).'));
+    let calc = null;
+    if (exercicios.length) {
+      const sel = h('select', { 'aria-label': 'Exercício' }, exercicios.map((e, i) => h('option', { value: String(i) }, e.nome)));
+      const carga = h('input', { inputMode: 'decimal', autocomplete: 'off', placeholder: 'ex.: 30', 'aria-label': 'Carga usada em kg' });
+      const saida = h('p', { class: 'calc-saida', 'aria-live': 'polite' }, 'Digite a carga para ver a zona.');
+      const atualizar = () => {
+        const e = exercicios[Number(sel.value)], kg = K.lerNumero(carga.value), z = K.zonaCarga(kg, e.rm);
+        if (!z) { saida.replaceChildren('Digite a carga para ver a zona.'); return; }
+        saida.replaceChildren(h('strong', null, `${kgCurto(kg)} kg = ${fmt(z.pct, 0)}% do 1RM`), h('span', { class: `chip zona-${z.chave}` }, z.nome), h('span', { class: 'sub' }, `(${z.reps})`),
+          ...(z.pct > 100 ? [h('span', { class: 'sub' }, 'Acima do 1RM estimado: hora de refazer o teste.')] : []));
+      };
+      sel.addEventListener('change', atualizar); carga.addEventListener('input', atualizar);
+      calc = h('div', null,
+        h('h4', { class: 'sub-titulo' }, 'Carga (% do 1RM)'),
+        h('div', { class: 'lista-cargas' }, exercicios.map(e => h('div', { class: 'carga-ex' },
+          h('div', { class: 'carga-topo' }, h('span', null, e.nome), h('span', { class: 'sub num' }, `1RM ${kgCurto(Math.round(e.rm * 2) / 2)} kg`)),
+          h('div', { class: 'carga-faixas' }, K.cargasPorZona(e.rm).map(z => h('div', { class: `faixa zona-${z.chave}` },
+            h('span', { class: 'faixa-nome' }, z.curto), h('span', { class: 'num' }, z.min == null ? `até ${kgCurto(z.max)}` : `${kgCurto(z.min)}–${kgCurto(z.max)}`))))))),
+        h('div', { class: 'calc-carga' },
+          h('p', { class: 'sub' }, paraAluno ? 'Quanto você está usando? Escolha o exercício e digite a carga:' : 'Calculadora: escolha o exercício e digite a carga usada no treino.'),
+          h('div', { class: 'calc-linha' }, h('label', { class: 'campo' }, 'Exercício', sel), h('label', { class: 'campo' }, 'Carga (kg)', carga)), saida),
+        h('p', { class: 'aviso' }, 'Valores em kg, pela % do 1RM estimado: Resistência muscular abaixo de 67%, Hipertrofia de 67% a 85%, Força de 85% para cima.'));
+    }
+    if (!tabelaFC && !calc) return null;
+    return h('section', { class: 'card zonas' }, h('h3', { class: 'titulo-secao' }, 'Zonas de treino'),
+      h('div', { class: 'dois-zonas' }, tabelaFC, calc || h('p', { class: 'sub' }, 'As zonas de carga aparecem quando houver teste de força (1RM).')));
+  }
+
   async function excluirAvaliacao(a, v) {
     if (!(await confirmar({ titulo: 'Excluir avaliação?', texto: `A avaliação de ${dataBR(v.data)} de ${a.nome} será apagada. Não dá para desfazer.` }))) return;
     const { error } = await db.from('avaliacoes').delete().eq('id', v.id);
@@ -796,6 +849,7 @@ function iniciar() {
         frase('Sua força no supino', (c.supino1RM ?? NaN) - (c0.supino1RM ?? NaN), 'kg', 1, 'aumentou', 'diminuiu'),
         c.pressao ? h('li', null, `Sua pressão na última avaliação: ${ult.pas}/${ult.pad} (${c.pressao.texto.toLowerCase()}).`) : null)) : null,
       varias ? h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Seus gráficos'), h('div', { class: 'graficos' }, SERIES.filter(sr => ['Gordura', 'Massa muscular', 'Peso', 'Cintura'].includes(sr.t)).map(sr => grafico(eu, avs, sr)))) : null,
+      (z => z && secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }))(zonasDoAluno(eu, avs)),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
       h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`));
   }
