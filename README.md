@@ -2,6 +2,15 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.9.0 — Visual Coral revisado
+
+- **Visual novo** (direção "A · Coral", revisada com as skills de UX e pela Lei de Jakob: o app funciona como os apps que as pessoas já usam). Cores quentes com coral só em ações e seleção; números em preto e status sempre com seta e palavra, não só cor. Fontes Outfit (títulos e números) e Work Sans (texto), servidas pelo próprio site. Ícone do app em coral. Modo escuro acompanha.
+- **Topo**: marca à esquerda; à direita, ajuda (?) e o **menu da conta** (círculo com as iniciais), com Meus dados, Personais (administrador) e Sair.
+- **Aluno**: **abas embaixo** (Início, Avaliações, Evolução, Perfil), como nos apps de saúde. Início com os números principais e o recado; Avaliações lista todas e abre cada uma com as partes recolhíveis; Evolução com seletor de medida, gráfico, "desde a primeira avaliação" e zonas de treino; Perfil com os dados, o guia e Sair.
+- **Personal**: lista de alunos em linhas, com filtros **Reavaliar** (última avaliação há mais de 3 meses) e **Sem acesso**; no celular, **"Novo aluno"** vira botão flutuante embaixo à direita. Ficha com avatar. Formulário com **barra de progresso**, etapas concluídas com ✓ e, no celular, **Voltar / Próximo fixos embaixo**.
+- **Resultado da avaliação**: números principais no topo e cada parte (perímetros e dobras, força, testes, postura, coração e exames, zonas) numa **seção que abre e fecha**. O personal vê tudo aberto; o aluno vê o resumo e abre o que quiser.
+- Guia de uso atualizado. Nenhuma regra, cálculo ou dado mudou. Tela de design: "Avaliação Física — Coral revisado".
+
 ## Versão 0.8.0 — Avaliação postural
 
 - Nova etapa **Postura** na avaliação (agora são 8 etapas), opcional: o personal marca "Fiz a avaliação postural" e preenche um checklist visual por vista, com observações.

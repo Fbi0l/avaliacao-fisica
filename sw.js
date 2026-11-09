@@ -3,10 +3,12 @@
    - NUNCA guarda nada do banco (login, alunos, avaliações): esses pedidos passam direto.
    - Rede primeiro: com internet, usa sempre a versão mais nova publicada. */
 'use strict';
-const VERSAO = 'avaliacao-v0.8.0';
+const VERSAO = 'avaliacao-v0.9.0';
 const ARQUIVOS = [
-  './', './index.html', './app.js?v=0.8.0', './calculos.js?v=0.8.0', './styles.css?v=0.8.0',
+  './', './index.html', './app.js?v=0.9.0', './calculos.js?v=0.9.0', './styles.css?v=0.9.0',
   './manifest.webmanifest', './assets/icone.svg', './assets/icone-192.png', './assets/icone-512.png',
+  './assets/fonts/work-sans-latin-400-normal.woff2', './assets/fonts/work-sans-latin-500-normal.woff2', './assets/fonts/work-sans-latin-600-normal.woff2',
+  './assets/fonts/outfit-latin-500-normal.woff2', './assets/fonts/outfit-latin-600-normal.woff2', './assets/fonts/outfit-latin-700-normal.woff2',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js'
 ];
 const PERMITIDOS = [self.location.origin, 'https://cdn.jsdelivr.net'];

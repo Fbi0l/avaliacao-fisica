@@ -54,6 +54,7 @@ function lerRota(hash) {
   if ((m = h.match(new RegExp(`^av-${uuid}$`)))) return { tela: 'avaliacao', id: m[1] };
   if ((m = h.match(new RegExp(`^nova-${uuid}$`)))) return { tela: 'nova', id: m[1] };
   if ((m = h.match(new RegExp(`^editar-${uuid}$`)))) return { tela: 'editar', id: m[1] };
+  if (/^(inicio|avaliacoes|evolucao|perfil)$/.test(h)) return { tela: h };
   return { tela: 'inicio' };
 }
 
@@ -217,6 +218,15 @@ function zonasDoAluno(aluno, avs) {
   return { fc: comRepouso.c.zonasFC, dataFC: comRepouso.v.data, exercicios: [...exercicios.values()] };
 }
 
+/** Filtros da lista de alunos: reavaliar (sem avaliação ou a última tem mais de DIAS_REAVALIAR dias) e sem acesso ao app.
+    O aluno de exemplo não entra em nenhum dos dois. */
+const DIAS_REAVALIAR = 90;
+function filtrosDoAluno(aluno, resumo, hoje = hojeISO()) {
+  if (aluno.exemplo) return { reavaliar: false, semAcesso: false };
+  const dias = resumo?.ultima ? Math.round((Date.parse(hoje) - Date.parse(resumo.ultima)) / 86400000) : Infinity;
+  return { reavaliar: dias > DIAS_REAVALIAR, semAcesso: !aluno.usuario_id };
+}
+
 /** Diferença com sentido: 'bom', 'ruim' ou 'neutro', conforme a direção desejada (1 sobe, -1 desce, 0 tanto faz). */
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
@@ -237,19 +247,19 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '0.8.0';
+const GUIA_REVISADO_NA_VERSAO = '0.9.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
     itens: ['Criamos um aluno de exemplo, a Mariana, com 3 avaliações fictícias, para você ver todas as telas funcionando.', 'Seus alunos e avaliações são só seus: nenhum outro personal vê nada.'] },
   { icone: '◉', titulo: '1. Seus alunos',
-    texto: 'A lista de alunos fica ao lado (no celular, no topo). Toque num aluno para abrir a ficha dele.',
-    itens: ['“+ Novo” cadastra um aluno: nome, sexo e data de nascimento.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
+    texto: 'A lista de alunos fica ao lado (no celular, ocupa a tela). Toque num aluno para abrir a ficha dele.',
+    itens: ['“Novo aluno” cadastra um aluno: nome, sexo e data de nascimento. No celular, é o botão laranja embaixo, à direita.', 'Os filtros “Reavaliar” (última avaliação há mais de 3 meses) e “Sem acesso” (ainda não entrou no app) ajudam a achar quem precisa de atenção.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
   { icone: '＋', titulo: '2. Nova avaliação em 8 etapas',
     texto: 'Básico, exames, perímetros, dobras, força, testes, postura e parecer. Só peso e altura são obrigatórios.',
-    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.', 'Na etapa Testes: flexão de braço, abdominal em 1 minuto, teste aeróbico (Cooper ou distância e tempo livres) e flexiteste, todos opcionais.', 'Na etapa Postura: checklist visual de frente, de lado e de costas, com observações.'] },
+    itens: ['A barra de progresso mostra em que etapa você está; no celular, “Voltar” e “Próximo” ficam fixos embaixo.', 'Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.', 'Na etapa Testes: flexão de braço, abdominal em 1 minuto, teste aeróbico (Cooper ou distância e tempo livres) e flexiteste, todos opcionais.', 'Na etapa Postura: checklist visual de frente, de lado e de costas, com observações.'] },
   { icone: '▤', titulo: '3. O resultado completo',
-    texto: 'Cada avaliação vira uma ficha com tudo calculado.',
+    texto: 'Cada avaliação vira uma ficha com tudo calculado. Os números principais ficam no topo e cada parte (perímetros, força, testes, postura, coração, zonas) abre e fecha com um toque.',
     itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.', 'Testes físicos com classificação: flexão, abdominal, VO₂máx do Cooper e notas do flexiteste.', 'Avaliação postural: as alterações encontradas em cada vista.', 'Zonas de treino: faixas de frequência cardíaca e de carga (% do 1RM), com uma calculadora de carga.'] },
   { icone: '↗', titulo: '4. Evolução e comparação',
     texto: 'Na ficha do aluno, as abas mostram a evolução em gráficos e comparam quaisquer duas avaliações.',
@@ -259,21 +269,24 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['O aluno aceita o termo de uso dos dados (LGPD), cria uma senha e vê só a própria evolução, em linguagem simples.', 'O aluno de exemplo não recebe convite. Quando não precisar mais dele, apague em “Editar”.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
-    itens: ['Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
+    itens: ['“Meus dados”, “Personais” e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
 ];
 const PASSOS_TUTORIAL_ALUNO = [
   { icone: '✦', titulo: 'Bem-vindo!',
     texto: 'Aqui você acompanha as avaliações físicas que o seu personal registra.',
-    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.'] },
-  { icone: '▤', titulo: 'Seus números',
-    texto: 'No topo aparecem os principais resultados da última avaliação: gordura, massa muscular e peso.',
-    itens: ['As setas mostram o que mudou desde a primeira avaliação.', 'Verde quer dizer que mudou na direção boa.'] },
-  { icone: '↗', titulo: 'Evolução, zonas e recado',
-    texto: 'Mais abaixo ficam os gráficos de evolução, os seus testes físicos, a avaliação postural, as zonas de treino e o recado do seu personal.',
+    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.', 'As abas embaixo levam a cada parte: Início, Avaliações, Evolução e Perfil.'] },
+  { icone: '⌂', titulo: 'Início',
+    texto: 'Os principais resultados da última avaliação: gordura, massa muscular, peso e cintura, e o recado do seu personal.',
+    itens: ['As setas mostram o que mudou desde a primeira avaliação. Verde quer dizer que mudou na direção boa.', '“Ver a avaliação completa” abre todos os detalhes.'] },
+  { icone: '▤', titulo: 'Avaliações',
+    texto: 'Todas as suas avaliações, da mais recente para a mais antiga.',
+    itens: ['Em cada uma, os números principais ficam no topo e as partes (perímetros, força, testes físicos, avaliação postural, coração, zonas de treino) abrem com um toque.', '“Imprimir / PDF” gera o relatório.'] },
+  { icone: '↗', titulo: 'Evolução e zonas',
+    texto: 'O gráfico mostra como cada medida mudou; escolha a medida nos botões acima dele.',
     itens: ['Zonas de frequência cardíaca: em que batimentos treinar cada intensidade.', 'Zonas de carga: digite a carga de um exercício e veja se está em resistência, hipertrofia ou força.', 'A cada nova avaliação, tudo se atualiza sozinho.'] },
-  { icone: '?', titulo: 'Dúvidas e seus dados',
-    texto: 'Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.',
-    itens: ['Para rever este guia, toque em “?” no topo.'] }
+  { icone: '?', titulo: 'Perfil e seus dados',
+    texto: 'Na aba Perfil você revê este guia e sai do app.',
+    itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
 ];
 /** Mostra o guia sozinho só se a pessoa ainda não o viu (no perfil dela ou neste aparelho). */
 function deveMostrarTutorial(metadados, vistoNoAparelho) {
@@ -336,7 +349,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
+  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, filtrosDoAluno, DIAS_REAVALIAR, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
 } else {
   iniciar();
 }
@@ -361,6 +374,10 @@ function iniciar() {
   function s(tag, attrs, ...filhos) { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); filhos.flat(Infinity).forEach(f => f != null && e.append(f instanceof Node ? f : String(f))); return e; }
   /** Só os elementos de verdade: partes opcionais da tela (null, undefined, false) somem em vez de virar texto. */
   const soElementos = itens => [itens].flat(Infinity).filter(x => x != null && x !== false && x !== true);
+  /** Seção que abre e fecha: título e resumo sempre à vista; o detalhe quando a pessoa quiser (como nas configurações do celular). */
+  const secao = (titulo, resumo, aberto, ...corpo) => h('details', { class: 'card secao', open: !!aberto },
+    h('summary', null, h('span', { class: 's-tit' }, h('strong', null, titulo), resumo ? h('span', { class: 's-res' }, resumo) : null)),
+    h('div', { class: 's-corpo' }, corpo));
   const chip = c => c ? h('span', { class: 'chip ' + (c.tom || '') }, c.texto) : h('span', { class: 'chip' }, '—');
   const dataBR = iso => { const [a, m, d] = String(iso).split('-').map(Number); return new Date(a, m - 1, d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', ''); };
   const dataCurta = iso => { const [, m, d] = String(iso).split('-'); return `${d}/${m}`; };
@@ -379,7 +396,7 @@ function iniciar() {
     return;
   }
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
-  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null };
+  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null };
 
   /* ----- Confirmação ----- */
   function confirmar({ titulo, texto, botao = 'Excluir' }) {
@@ -403,7 +420,7 @@ function iniciar() {
     est.personal = p.data; est.alunos = a.data;
     est.resumo = new Map();
     for (const x of r.data) { const o = est.resumo.get(x.aluno_id) || { n: 0, ultima: null }; o.n++; if (!o.ultima || x.data > o.ultima) o.ultima = x.data; est.resumo.set(x.aluno_id, o); }
-    $('quemSou').textContent = est.personal.nome + (est.personal.cref ? ` · CREF ${est.personal.cref}` : '');
+    mostrarQuem(est.personal.nome, est.personal.cref ? `CREF ${est.personal.cref}` : '');
   }
   async function avaliacoesDe(alunoId, recarregar = false) {
     if (!recarregar && est.avs.has(alunoId)) return est.avs.get(alunoId);
@@ -416,14 +433,22 @@ function iniciar() {
   /* ----- Lista de alunos ----- */
   function desenharLista(atual) {
     const termo = est.busca.trim().toLowerCase();
-    const lista = est.alunos.filter(a => !termo || a.nome.toLowerCase().includes(termo));
+    const hoje = hojeISO(), contas = { todos: est.alunos.length, reavaliar: 0, sem_acesso: 0 };
+    for (const a of est.alunos) { const f = filtrosDoAluno(a, est.resumo.get(a.id), hoje); if (f.reavaliar) contas.reavaliar++; if (f.semAcesso) contas.sem_acesso++; }
+    if (!contas[est.filtro] && est.filtro !== 'todos') est.filtro = 'todos';
+    $('filtroAlunos').replaceChildren(...[['todos', 'Todos'], ['reavaliar', 'Reavaliar'], ['sem_acesso', 'Sem acesso']].filter(([k]) => k === 'todos' || contas[k])
+      .map(([k, t]) => h('button', { type: 'button', 'aria-pressed': String(est.filtro === k), onclick: () => { est.filtro = k; desenharLista(atual); } }, `${t} · ${contas[k]}`)));
+    $('filtroAlunos').classList.toggle('hidden', est.alunos.length < 2);
+    const lista = est.alunos.filter(a => (!termo || a.nome.toLowerCase().includes(termo))
+      && (est.filtro === 'todos' || (f => est.filtro === 'reavaliar' ? f.reavaliar : f.semAcesso)(filtrosDoAluno(a, est.resumo.get(a.id), hoje))));
     $('qtdAlunos').textContent = String(est.alunos.length);
-    if (!lista.length) { $('listaAlunos').replaceChildren(h('p', { class: 'vazio' }, est.alunos.length ? 'Nenhum aluno com esse nome.' : 'Nenhum aluno ainda. Toque em “+ Novo”.')); return; }
+    if (!lista.length) { $('listaAlunos').replaceChildren(h('p', { class: 'vazio' }, est.alunos.length ? 'Nenhum aluno com esse nome.' : 'Nenhum aluno ainda. Toque em “Novo aluno”.')); return; }
     $('listaAlunos').replaceChildren(...lista.map(a => {
-      const r = est.resumo.get(a.id);
+      const r = est.resumo.get(a.id), f = filtrosDoAluno(a, r, hoje);
       return h('button', { class: 'aluno-btn', type: 'button', 'aria-current': String(a.id === atual), onclick: () => ir('aluno-' + a.id) },
         h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(a.nome)),
-        h('span', null, h('strong', null, a.nome), h('small', null, (a.exemplo ? 'Exemplo · ' : '') + (r ? `${r.n} aval. · última ${dataBR(r.ultima)}` : 'Sem avaliação'))));
+        h('span', null, h('strong', null, a.nome), h('small', { class: f.reavaliar ? 'reavaliar' : null },
+          (a.exemplo ? 'Exemplo · ' : '') + (f.reavaliar ? (r ? `Reavaliar · última em ${dataBR(r.ultima)}` : 'Reavaliar · sem avaliação') : r ? `${r.n} aval. · última ${dataBR(r.ultima)}` : 'Sem avaliação'))));
     }));
   }
 
@@ -463,9 +488,9 @@ function iniciar() {
     const avs = await avaliacoesDe(a.id);
     const idade = K.idadeEm(a.nascimento, hojeISO());
     const cab = h('section', { class: 'card' }, h('div', { class: 'perfil' },
-      h('div', null, h('h2', null, a.nome), h('div', { class: 'meta' },
+      h('div', { class: 'ficha-cab' }, h('span', { class: 'avatar grande', 'aria-hidden': 'true' }, iniciais(a.nome)), h('div', null, h('h2', null, a.nome), h('div', { class: 'meta' },
         h('span', null, a.sexo === 'F' ? 'Feminino' : 'Masculino'), h('span', { class: 'num' }, `${idade} anos`),
-        a.exemplo ? h('span', { class: 'chip destaque' }, 'Aluno de exemplo: dados fictícios') : a.usuario_id ? h('span', { class: 'chip bom' }, 'Acessa o app') : h('span', { class: 'chip' }, 'Sem acesso ao app'))),
+        a.exemplo ? h('span', { class: 'chip destaque' }, 'Aluno de exemplo: dados fictícios') : a.usuario_id ? h('span', { class: 'chip bom' }, 'Acessa o app') : h('span', { class: 'chip' }, 'Sem acesso ao app')))),
       h('div', { class: 'linha' },
         h('button', { class: 'btn', type: 'button', onclick: () => abrirAluno(a) }, 'Editar'),
         a.exemplo ? null : h('button', { class: 'btn', type: 'button', onclick: () => abrirConvite(a) }, a.usuario_id ? 'Acesso do aluno' : 'Convidar'),
@@ -489,7 +514,7 @@ function iniciar() {
   }
 
   /* ----- Resultado de uma avaliação ----- */
-  function telaResultado(a, v) {
+  function telaResultado(a, v, { paraAluno = false } = {}) {
     const c = K.calcular(a, v);
     const regua = z => h('td', null, h('div', { class: 'regua', title: `Escore-Z ${fmt(z, 2)}` }, (() => { const i = h('i'); i.style.left = `${Math.max(0, Math.min(100, (z + 3) / 6 * 100))}%`; return i; })()));
     const kpi = (k, valor, un, extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, valor, un ? h('small', null, un) : null), extra);
@@ -500,49 +525,53 @@ function iniciar() {
           h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('editar-' + av.id) }, 'Completar a avaliação ›'))
       : null;
     const forca = (nome, f, rm, rel, classe) => h('tr', null, h('td', null, nome), h('td', { class: 'n' }, f ? `${fmt(f.carga, 0)} × ${f.reps}` : '—'), h('td', { class: 'n' }, fmt(rm)), h('td', { class: 'n' }, fmt(rel, 2)), h('td', null, classe));
+    const nPer = K.PERIMETROS.filter(([k]) => v.perimetros?.[k] != null).length, nDob = K.DOBRAS.filter(([k]) => c.dobras[k] != null).length;
+    const abre = !paraAluno; // o personal vê tudo aberto; o aluno vê o resumo e abre o que quiser
+    const resumoForca = c.exercicios1RM.map(e => `${e.nome.split(' ')[0]} ${fmt(e.rm, 0)} kg`).join(' · ');
+    const resumoCoracao = [v.pas != null ? `Pressão ${v.pas}/${v.pad}${c.pressao ? ' ' + c.pressao.texto.toLowerCase() : ''}` : null, v.fc_repouso != null ? `FC repouso ${v.fc_repouso}` : null].filter(Boolean).join(' · ');
     return [
-      h('div', { class: 'linha nao-imprimir' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('aluno-' + a.id) }, `‹ ${a.nome}`)),
+      paraAluno ? h('div', { class: 'linha nao-imprimir' }, h('a', { class: 'btn ghost', href: '#avaliacoes' }, '‹ Avaliações'))
+        : h('div', { class: 'linha nao-imprimir' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('aluno-' + a.id) }, `‹ ${a.nome}`)),
       h('section', { class: 'card' },
-        h('div', { class: 'card-topo' }, h('div', null, h('h2', null, `${a.nome} · ${dataBR(v.data)}`), h('p', { class: 'sub num' }, `${c.idade} anos · ${fmt(v.peso)} kg · ${fmt(v.altura, 2)} m · IMC ${fmt(c.imc)}`)),
+        h('div', { class: 'card-topo' }, h('div', null, h('h2', null, paraAluno ? dataBR(v.data) : `${a.nome} · ${dataBR(v.data)}`), h('p', { class: 'sub num' }, `${c.idade} anos · ${fmt(v.peso)} kg · ${fmt(v.altura, 2)} m · IMC ${fmt(c.imc)}`)),
           h('div', { class: 'linha nao-imprimir' },
-            h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => excluirAvaliacao(a, v) }, 'Excluir'),
+            paraAluno ? null : h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => excluirAvaliacao(a, v) }, 'Excluir'),
             h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Imprimir / PDF'),
-            h('button', { class: 'btn primary', type: 'button', onclick: () => ir('editar-' + v.id) }, 'Editar'))),
-        faltaAviso(v),
+            paraAluno ? null : h('button', { class: 'btn primary', type: 'button', onclick: () => ir('editar-' + v.id) }, 'Editar'))),
+        paraAluno ? null : faltaAviso(v),
         h('div', { class: 'kpis' },
           kpi(`Gordura · ${K.EQUACOES_GORDURA[c.equacaoGordura].nome}`, fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)),
           kpi('Massa muscular', fmt(c.massaMuscular), c.massaMuscular == null ? null : 'kg', c.massaMuscular == null ? faltaTexto(falta.muscular) : chip(c.classeMuscular)),
           kpi('Massa gorda / magra', fmt(c.massaGorda), c.massaGorda == null ? null : `/ ${fmt(c.massaMagra)} kg`, c.massaGorda == null ? h('span', { class: 'sub' }, 'Sai junto com a gordura.') : null),
           kpi('Σ 8 dobras', fmt(c.somaDobras, 0), c.somaDobras == null ? null : 'mm', c.somaDobras == null ? h('span', { class: 'sub' }, 'Nenhuma dobra registrada.') : h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)))),
-      h('div', { class: 'dois' },
-        h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
+      nPer || nDob ? secao('Perímetros e dobras', `${nPer} ${nPer === 1 ? 'perímetro' : 'perímetros'} · ${nDob} ${nDob === 1 ? 'dobra' : 'dobras'}`, abre,
+        h('div', { class: 'dois' },
+          h('div', null, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Local'), h('th', { class: 'n' }, 'Medida'), h('th', null, 'Proporção'), h('th'))),
           h('tbody', null, K.PERIMETROS.filter(([k]) => v.perimetros?.[k] != null).map(([k, n]) => { const z = c.zPerimetros[k];
             return h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(v.perimetros[k])), z == null ? h('td') : regua(z), h('td', null, z == null ? null : chip(K.classeProporcao(z)))); }),
             c.perimetroMuscularBraco == null ? null : h('tr', null, h('td', null, 'Perímetro muscular do braço'), h('td', { class: 'n' }, fmt(c.perimetroMuscularBraco)), h('td'), h('td')))))),
-        h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela' }, h('table', null,
+          h('div', null, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Dobra'), h('th', { class: 'n' }, 'Média'), h('th', null, 'Proporção'), h('th'))),
-          h('tbody', null, K.DOBRAS.filter(([k]) => c.dobras[k] != null).map(([k, n]) => h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(c.dobras[k])), regua(c.zDobras[k]), h('td', null, chip(K.classeProporcao(c.zDobras[k])))))))),
-          h('p', { class: 'aviso' }, 'Proporção compara a medida com um corpo de referência ajustado à altura do aluno (modelo Phantom). O ponto no meio da régua é a média.'))),
-      h('div', { class: 'dois' },
-        h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Força (1RM estimado)'), h('div', { class: 'tabela' }, h('table', null,
+          h('tbody', null, K.DOBRAS.filter(([k]) => c.dobras[k] != null).map(([k, n]) => h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(c.dobras[k])), regua(c.zDobras[k]), h('td', null, chip(K.classeProporcao(c.zDobras[k])))))))))),
+        h('p', { class: 'aviso' }, 'Proporção compara a medida com um corpo de referência ajustado à altura do aluno (modelo Phantom). O ponto no meio da régua é a média.')) : null,
+      c.exercicios1RM.length ? secao('Força (1RM)', resumoForca, abre, h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Exercício'), h('th', { class: 'n' }, 'Carga × reps'), h('th', { class: 'n' }, '1RM'), h('th', { class: 'n' }, '÷ peso'), h('th', null, 'Classificação'))),
           h('tbody', null, forca('Supino reto', v.forca?.supino, c.supino1RM, c.supinoRelativo, c.supino1RM == null ? null : chip(c.classeSupino)),
             forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : chip(c.classeLegPress)),
-            c.outrosExercicios.map(o => forca(o.nome, o, o.rm, o.relativo, h('span', { class: 'sub' }, 'sem tabela')))))),
-          h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Supino e leg press têm tabela de classificação; os outros exercícios mostram o 1RM para acompanhar a evolução. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')),
-        h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Coração e exames'), h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
+            c.outrosExercicios.map(o => forca(o.nome, o, o.rm, o.relativo, h('span', { class: 'sub' }, 'sem tabela')))))), h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Supino e leg press têm tabela de classificação; os outros exercícios mostram o 1RM para acompanhar a evolução. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')) : null,
+      cardTestes(c.testes, abre),
+      cardPostura(c, abre),
+      secao('Coração e exames', resumoCoracao || null, abre, h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
-          Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) ),
-      cardTestes(c.testes),
-      cardPostura(c),
-      secaoZonas({ fc: c.zonasFC, exercicios: c.exercicios1RM, paraAluno: false }),
-      h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || 'Sem parecer.'))
+          Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))),
+      secaoZonas({ fc: c.zonasFC, exercicios: c.exercicios1RM, paraAluno, aberto: false }),
+      h('section', { class: 'card' + (paraAluno ? ' recado' : '') }, h('h3', { class: 'titulo-secao' }, paraAluno ? 'Recado do seu personal' : 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || (paraAluno ? 'Sem recado nesta avaliação.' : 'Sem parecer.')))
     ];
   }
   /** Testes físicos de uma avaliação: resistência, aeróbico e flexiteste. Nada aplicado, nada mostrado. */
-  function cardTestes(tt) {
+  function cardTestes(tt, aberto = true) {
     const a = tt.aerobico;
     const linhas = [
       tt.flexao == null ? null : h('tr', null, h('td', null, 'Flexão de braço ', h('span', { class: 'sub' }, '(até a falha)')), h('td', { class: 'n' }, `${tt.flexao} rep.`), h('td', null, chip(tt.classeFlexao))),
@@ -554,7 +583,9 @@ function iniciar() {
     ].filter(Boolean);
     const flex = tt.flexiteste;
     if (!linhas.length && !flex.length) return null;
-    return h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Testes físicos'),
+    const resumo = [tt.flexao != null ? 'flexão' : null, tt.abdominal != null ? 'abdominal' : null, a ? (a.tipo === 'cooper' ? 'Cooper' : 'corrida') : null,
+      flex.length ? 'flexiteste' : null].filter(Boolean).join(', ');
+    return secao('Testes físicos', resumo ? resumo[0].toUpperCase() + resumo.slice(1) : null, aberto,
       h('div', { class: 'dois-zonas' },
         h('div', null, linhas.length ? h('div', { class: 'tabela' }, h('table', null, h('tbody', null, linhas))) : h('p', { class: 'sub' }, 'Sem testes de resistência ou aeróbico nesta avaliação.'),
           linhas.length ? h('p', { class: 'aviso' }, 'Flexão: CSEP/ACSM (mulheres com os joelhos no chão). Abdominal: Pollock e Wilmore (1993). VO₂máx pela distância do Cooper, classificado pelo Cooper Institute.') : null),
@@ -567,10 +598,10 @@ function iniciar() {
   }
 
   /** Avaliação postural: alterações por vista, ou "nenhuma alteração". Não feita, nada mostrado. */
-  function cardPostura(c) {
+  function cardPostura(c, aberto = true) {
     if (!c.posturaAvaliada) return null;
     const alt = c.alteracoesPosturais;
-    return h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Avaliação postural'),
+    return secao('Postura', alt.length ? `${alt.length} ${alt.length === 1 ? 'ponto' : 'pontos'} de atenção: ${[...new Set(alt.map(x => x.nome.split(' (')[0].toLowerCase()))].slice(0, 3).join(', ')}` : 'Nenhuma alteração observada', aberto,
       alt.length ? h('div', { class: 'postura-vistas' }, K.POSTURA.map(([vista]) => { const da = alt.filter(x => x.vista === vista);
         return da.length ? h('div', null, h('h4', { class: 'sub-titulo' }, `Vista ${vista.toLowerCase()}`),
           h('ul', { class: 'lista-postura' }, da.map(x => h('li', null, h('strong', null, x.nome), `: ${x.texto}`)))) : null; }))
@@ -582,7 +613,7 @@ function iniciar() {
   /** kg sem casa decimal quando é inteiro (32 em vez de 32,0). */
   const kgCurto = v => Number.isInteger(v) ? fmt(v, 0) : fmt(v);
   /** Zonas de treino: FC (Karvonen ou % da FC máxima) e carga por % do 1RM, com calculadora. */
-  function secaoZonas({ fc, exercicios, paraAluno, dataFC }) {
+  function secaoZonas({ fc, exercicios, paraAluno, dataFC, aberto }) {
     const tabelaFC = !fc ? null : h('div', null,
       h('h4', { class: 'sub-titulo' }, 'Frequência cardíaca'),
       h('div', { class: 'tabela' }, h('table', null,
@@ -616,8 +647,9 @@ function iniciar() {
         h('p', { class: 'aviso' }, 'Valores em kg, pela % do 1RM estimado: Resistência muscular abaixo de 67%, Hipertrofia de 67% a 85%, Força de 85% para cima.'));
     }
     if (!tabelaFC && !calc) return null;
-    return h('section', { class: 'card zonas' }, h('h3', { class: 'titulo-secao' }, 'Zonas de treino'),
-      h('div', { class: 'dois-zonas' }, tabelaFC, calc || h('p', { class: 'sub' }, 'As zonas de carga aparecem quando houver teste de força (1RM).')));
+    const conteudo = h('div', { class: 'dois-zonas' }, tabelaFC, calc || h('p', { class: 'sub' }, 'As zonas de carga aparecem quando houver teste de força (1RM).'));
+    if (aberto !== undefined) return secao('Zonas de treino', exercicios.length ? 'Frequência cardíaca e carga por exercício' : 'Frequência cardíaca', aberto, conteudo);
+    return h('section', { class: 'card zonas' }, h('h3', { class: 'titulo-secao' }, 'Zonas de treino'), conteudo);
   }
 
   async function excluirAvaliacao(a, v) {
@@ -847,12 +879,14 @@ function iniciar() {
       h('div', { class: 'linha' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => { est.rascunhoChave = null; ir(existente ? 'av-' + existente.id : 'aluno-' + a.id); } }, '‹ Cancelar')),
       h('section', { class: 'card' },
         h('div', { class: 'card-topo' }, h('div', null, h('h2', null, `${existente ? 'Editar avaliação' : 'Nova avaliação'} · ${a.nome}`), h('p', { class: 'sub' }, `Etapa ${p + 1} de ${PASSOS.length}: ${PASSOS[p]}`)), existente || p > 0 ? botaoSalvar : null),
-        h('nav', { class: 'passos', 'aria-label': 'Etapas' }, PASSOS.map((t, i) => h('button', { type: 'button', class: i < p ? 'feito' : '', 'aria-current': i === p ? 'step' : null, onclick: () => irPasso(i) }, `${i + 1}. ${t}`))),
+        (() => { const barra = h('i'); barra.style.width = `${Math.round((p + 1) / PASSOS.length * 100)}%`;
+          return h('div', { class: 'progresso', role: 'progressbar', 'aria-label': 'Progresso da avaliação', 'aria-valuemin': '1', 'aria-valuemax': String(PASSOS.length), 'aria-valuenow': String(p + 1) }, barra); })(),
+        h('nav', { class: 'passos', 'aria-label': 'Etapas' }, PASSOS.map((t, i) => h('button', { type: 'button', class: i < p ? 'feito' : '', 'aria-current': i === p ? 'step' : null, onclick: () => irPasso(i) }, i < p ? `✓ ${t}` : `${i + 1}. ${t}`))),
         h('div', { class: 'form-layout' },
           h('div', null, corpo,
             h('div', { class: 'form-pe' }, h('button', { class: 'btn', type: 'button', disabled: p === 0, onclick: () => irPasso(p - 1) }, '‹ Voltar'),
               ult ? h('button', { class: 'btn primary', type: 'button', onclick: ev => salvar(ev.currentTarget) }, existente ? 'Salvar alterações' : 'Salvar avaliação')
-                : h('button', { class: 'btn primary', type: 'button', onclick: () => irPasso(p + 1) }, 'Próximo ›')),
+                : h('button', { class: 'btn primary', type: 'button', onclick: () => irPasso(p + 1) }, `Próximo: ${PASSOS[p + 1]} ›`)),
             erro),
           painel))
     ];
@@ -990,38 +1024,89 @@ function iniciar() {
   $('persCompartilhar').addEventListener('click', () => navigator.share?.({ title: 'Convite: Avaliação Física', text: 'Crie seu acesso de personal no app de avaliação física (o link vale por 3 dias):', url: $('persLink').value }).catch(() => {}));
 
   /* ----- Visão do aluno ----- */
-  async function telaDoAluno() {
+  /* ----- Área do aluno: abas embaixo (Início, Avaliações, Evolução, Perfil), como nos apps de saúde ----- */
+  async function carregarAluno() {
     const [{ data: eu }, { data: avs, error }, { data: pers }] = await Promise.all([
       db.from('alunos').select('id,nome,sexo,nascimento').eq('usuario_id', est.usuario.id).single(),
       db.from('avaliacoes').select('*').order('data').order('criado_em'),
       db.from('personais').select('nome').limit(1).maybeSingle()]);
     if (error || !eu) throw error || new Error('sem ficha');
-    $('quemSou').textContent = eu.nome;
-    const area = $('areaAluno'), personal = pers?.nome && pers.nome !== 'Personal' ? pers.nome : 'seu personal';
-    if (!avs.length) { area.replaceChildren(h('section', { class: 'card ola' }, h('p', { class: 'sub' }, 'Olá,'), h('h2', null, primeiro(eu.nome)), h('p', { class: 'aviso' }, `Você ainda não tem avaliação registrada. Assim que ${personal} registrar a primeira, ela aparece aqui.`))); return; }
+    est.aluno = { eu, avs, personal: pers?.nome && pers.nome !== 'Personal' ? pers.nome : 'seu personal', serie: 'Gordura' };
+    mostrarQuem(eu.nome);
+  }
+  function rotearAluno() {
+    if (est.papel !== 'aluno' || !est.aluno) return;
+    const r = lerRota(location.hash), { eu, avs } = est.aluno;
+    const v = r.tela === 'avaliacao' ? avs.find(x => x.id === r.id) : null;
+    const aba = v ? 'avaliacoes' : ['avaliacoes', 'evolucao', 'perfil'].includes(r.tela) ? r.tela : 'inicio';
+    document.querySelectorAll('#navAluno a').forEach(a => a.setAttribute('aria-current', a.dataset.aba === aba ? 'page' : 'false'));
+    const tela = v ? telaResultado(eu, v, { paraAluno: true }) : aba === 'avaliacoes' ? alunoAvaliacoes() : aba === 'evolucao' ? alunoEvolucao() : aba === 'perfil' ? alunoPerfil() : alunoInicio();
+    $('areaAluno').replaceChildren(...soElementos(tela));
+    window.scrollTo({ top: 0 });
+  }
+  function alunoInicio() {
+    const { eu, avs, personal } = est.aluno;
+    const ola = h('section', { class: 'card ola' }, h('p', { class: 'sub' }, 'Olá,'), h('h2', null, primeiro(eu.nome)),
+      avs.length ? h('p', { class: 'sub' }, `Última avaliação em ${dataBR(avs.at(-1).data)} · ${avs.length} ${avs.length === 1 ? 'avaliação' : 'avaliações'} com ${personal}`) : null);
+    if (!avs.length) return [ola, h('p', { class: 'aviso' }, `Você ainda não tem avaliação registrada. Assim que ${personal} registrar a primeira, ela aparece aqui.`)];
     const ult = avs.at(-1), pri = avs[0], c = K.calcular(eu, ult), c0 = K.calcular(eu, pri), varias = avs.length > 1;
-    const delta = (dif, un, d) => !varias || !Number.isFinite(dif) ? null : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '▲ +' : dif < 0 ? '▼ ' : ''}${fmt(dif)} ${un} desde ${dataCurta(pri.data)}`);
+    const delta = (dif, un, d) => !varias || !Number.isFinite(dif) ? null
+      : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '▲ +' : dif < 0 ? '▼ ' : ''}${fmt(dif)} ${un}${sentido(dif, d) === 'bom' ? ' · melhorou' : ''}`);
     const kpi = (k, valor, un, ...extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, fmt(valor), valor == null ? null : h('small', null, un)), ...extra);
-    const frase = (nome, dif, un, d, sobe, desce) => !Number.isFinite(dif) ? null : h('li', null, Math.abs(dif) < 0.05 ? `${nome} se manteve estável.` : `${nome} ${dif > 0 ? sobe : desce} ${fmt(Math.abs(dif))} ${un}${sentido(dif, d) === 'bom' ? ' — ótimo sinal.' : '.'}`);
-    area.replaceChildren(...soElementos(
-      h('section', { class: 'card ola' }, h('p', { class: 'sub' }, 'Olá,'), h('h2', null, `${primeiro(eu.nome)}, aqui está sua evolução`), h('p', { class: 'sub' }, `Última avaliação em ${dataBR(ult.data)} · ${avs.length} ${avs.length === 1 ? 'avaliação' : 'avaliações'} com ${personal}`)),
+    return [ola,
       h('div', { class: 'grandes' },
         kpi('Gordura corporal', c.gordura, '%', delta(c.gordura - c0.gordura, 'pontos', -1), c.classeGordura ? chip(c.classeGordura) : null),
         kpi('Massa muscular', c.massaMuscular, 'kg', delta(c.massaMuscular - c0.massaMuscular, 'kg', 1)),
         kpi('Peso', Number(ult.peso), 'kg', delta(ult.peso - pri.peso, 'kg', 0)),
         kpi('Cintura', ult.perimetros?.cintura ?? null, 'cm', delta((ult.perimetros?.cintura ?? NaN) - (pri.perimetros?.cintura ?? NaN), 'cm', -1))),
-      varias ? h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Em resumo'), h('ul', { class: 'resumo' },
-        frase('Sua gordura corporal', c.gordura - c0.gordura, 'pontos percentuais', -1, 'subiu', 'caiu'),
-        frase('Sua massa muscular', c.massaMuscular - c0.massaMuscular, 'kg', 1, 'aumentou', 'diminuiu'),
-        frase('Sua cintura', (ult.perimetros?.cintura ?? NaN) - (pri.perimetros?.cintura ?? NaN), 'cm', -1, 'aumentou', 'diminuiu'),
-        frase('Sua força no supino', (c.supino1RM ?? NaN) - (c0.supino1RM ?? NaN), 'kg', 1, 'aumentou', 'diminuiu'),
-        c.pressao ? h('li', null, `Sua pressão na última avaliação: ${ult.pas}/${ult.pad} (${c.pressao.texto.toLowerCase()}).`) : null)) : null,
-      varias ? h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Seus gráficos'), h('div', { class: 'graficos' }, SERIES.filter(sr => ['Gordura', 'Massa muscular', 'Peso', 'Cintura'].includes(sr.t)).map(sr => grafico(eu, avs, sr)))) : null,
-      (v => v && cardTestes(K.calcular(eu, v).testes))([...avs].reverse().find(v => v.testes && Object.keys(v.testes).length)),
-      (v => v && cardPostura(K.calcular(eu, v)))([...avs].reverse().find(v => K.posturaAvaliada(v.postura))),
-      (z => z && secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }))(zonasDoAluno(eu, avs)),
-      h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
-      h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`)));
+      h('section', { class: 'card recado' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
+      h('a', { class: 'btn primary grande', href: '#av-' + ult.id }, 'Ver a avaliação completa ›')];
+  }
+  function alunoAvaliacoes() {
+    const { eu, avs } = est.aluno;
+    if (!avs.length) return h('p', { class: 'aviso' }, 'Nenhuma avaliação ainda.');
+    return [h('h2', { class: 'titulo-pagina' }, 'Avaliações'),
+      h('div', { class: 'lista-av' }, [...avs].reverse().map((v, i) => { const c = K.calcular(eu, v);
+        return h('a', { class: 'linha-lista', href: '#av-' + v.id },
+          h('span', { class: 's-tit' }, h('strong', null, dataBR(v.data), i === 0 ? h('span', { class: 'chip destaque-coral' }, 'Mais recente') : null),
+            h('span', null, [c.gordura == null ? null : `Gordura ${fmt(c.gordura)}%`, c.massaMuscular == null ? null : `Músculo ${fmt(c.massaMuscular)} kg`, `${fmt(v.peso)} kg`].filter(Boolean).join(' · '))),
+          h('span', { class: 'seta-dir', 'aria-hidden': 'true' })); }))];
+  }
+  function alunoEvolucao() {
+    const { eu, avs } = est.aluno;
+    const titulo = h('h2', { class: 'titulo-pagina' }, 'Evolução');
+    const z = zonasDoAluno(eu, avs);
+    const zonas = z ? secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }) : null;
+    if (avs.length < 2) return [titulo, h('p', { class: 'aviso' }, 'Os gráficos de evolução aparecem a partir da sua segunda avaliação.'), zonas];
+    const ordem = ['Gordura', 'Massa muscular', 'Peso', 'Cintura', 'VO₂máx (Cooper)'];
+    const series = ordem.map(t => SERIES.find(sr => sr.t === t)).filter(sr => sr && avs.filter(v => Number.isFinite(sr.f(v, K.calcular(eu, v)))).length >= 2);
+    if (!series.some(sr => sr.t === est.aluno.serie)) est.aluno.serie = series[0]?.t;
+    const atual = series.find(sr => sr.t === est.aluno.serie);
+    const pri = avs[0], ult = avs.at(-1), c0 = K.calcular(eu, pri), c = K.calcular(eu, ult);
+    const mud = [['Gordura', c0.gordura, c.gordura, '%', -1], ['Massa muscular', c0.massaMuscular, c.massaMuscular, 'kg', 1], ['Cintura', pri.perimetros?.cintura, ult.perimetros?.cintura, 'cm', -1],
+      ['Supino (1RM)', c0.supino1RM, c.supino1RM, 'kg', 1], ['Flexão de braço', c0.testes.flexao, c.testes.flexao, 'rep.', 1, 0], ['Abdominal (1 min)', c0.testes.abdominal, c.testes.abdominal, 'rep.', 1, 0],
+      ['VO₂máx', c0.testes.vo2, c.testes.vo2, '', 1], ['Peso', Number(pri.peso), Number(ult.peso), 'kg', 0]]
+      .filter(([, x, y]) => Number.isFinite(x) && Number.isFinite(y));
+    return [titulo,
+      series.length > 1 ? h('div', { class: 'seletor', role: 'group', 'aria-label': 'Medida do gráfico' }, series.map(sr => h('button', { type: 'button', 'aria-pressed': String(sr === atual),
+        onclick: () => { est.aluno.serie = sr.t; rotearAluno(); } }, { 'Massa muscular': 'Músculo', 'VO₂máx (Cooper)': 'VO₂' }[sr.t] || sr.t))) : null,
+      atual ? h('section', { class: 'card' }, grafico(eu, avs, atual)) : null,
+      mud.length ? h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, `Desde a primeira avaliação (${dataBR(pri.data)})`),
+        h('ul', { class: 'lista-mudancas' }, mud.map(([n, x, y, un, d, casas = 1]) => { const dif = y - x, sn = sentido(dif, d);
+          return h('li', null, h('span', null, n), h('span', { class: 'de' }, `${fmt(x, casas)} → ${fmt(y, casas)}${un ? ' ' + un : ''}`),
+            h('span', { class: 'delta ' + sn }, `${dif > 0 ? '▲ +' : dif < 0 ? '▼ ' : ''}${fmt(dif, casas)}`, sn === 'bom' ? h('span', { 'aria-hidden': 'true' }, ' ✓') : null, sn === 'bom' ? h('span', { class: 'sr-only' }, ' (melhorou)') : null)); })),
+        h('p', { class: 'sub' }, 'Verde com ✓: mudou na direção que você quer.')) : null,
+      zonas];
+  }
+  function alunoPerfil() {
+    const { eu, personal } = est.aluno;
+    return [h('h2', { class: 'titulo-pagina' }, 'Perfil'),
+      h('section', { class: 'card' }, h('div', { class: 'ficha-cab' }, h('span', { class: 'avatar grande', 'aria-hidden': 'true' }, iniciais(eu.nome)),
+        h('div', null, h('h2', null, eu.nome), h('p', { class: 'sub' }, `Seu personal: ${personal}`)))),
+      h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Seus dados'),
+        h('p', { class: 'parecer' }, `Só você e ${personal} veem as suas avaliações pelo app. Para corrigir alguma informação ou pedir a exclusão completa dos seus dados, fale com ${personal}.`)),
+      h('div', { class: 'linha' }, h('button', { class: 'btn', type: 'button', onclick: abrirTutorial }, 'Como usar o app'),
+        h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => $('sairBtn').click() }, 'Sair'))];
   }
 
   /* ----- Guia de primeiro acesso e aluno de exemplo ----- */
@@ -1054,6 +1139,14 @@ function iniciar() {
     if (deveMostrarTutorial(est.usuario.user_metadata, visto)) abrirTutorial();
   }
   $('ajudaBtn').addEventListener('click', abrirTutorial);
+  /* ----- Menu da conta (avatar no topo) ----- */
+  const menuConta = aberto => { $('contaMenu').classList.toggle('hidden', !aberto); $('contaBtn').setAttribute('aria-expanded', String(aberto)); };
+  $('contaBtn').addEventListener('click', ev => { ev.stopPropagation(); const abrir = $('contaMenu').classList.contains('hidden'); menuConta(abrir);
+    if (abrir) $('contaMenu').querySelector('button:not(.hidden)')?.focus(); });
+  $('contaMenu').addEventListener('click', ev => { if (ev.target.closest('button')) menuConta(false); });
+  document.addEventListener('click', ev => { if (!ev.target.closest('.conta')) menuConta(false); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('contaMenu').classList.contains('hidden')) { menuConta(false); $('contaBtn').focus(); } });
+  const mostrarQuem = (nome, detalhe) => { $('quemSou').textContent = detalhe ? `${nome} · ${detalhe}` : nome; $('contaNome').textContent = nome; $('contaIniciais').textContent = iniciais(nome) || '·'; };
   $('tutProximo').addEventListener('click', () => {
     if (tut.passo < tut.passos.length - 1) { tut.passo++; desenharPasso(); $('tutProximo').focus(); return; }
     const exemplo = est.papel === 'personal' && est.alunos.find(a => a.exemplo);
@@ -1097,7 +1190,7 @@ function iniciar() {
         if (deveCriarExemplo(est.usuario.user_metadata, est.alunos.length) && await criarAlunoExemplo()) await carregarPersonal();
         rotear(); talvezMostrarTutorial();
       }
-      else if (papel === 'aluno') { await telaDoAluno(); talvezMostrarTutorial(); }
+      else if (papel === 'aluno') { await carregarAluno(); $('navAluno').classList.remove('hidden'); document.body.classList.add('com-nav'); rotearAluno(); talvezMostrarTutorial(); }
       else { $('areaAluno').classList.remove('hidden'); $('areaAluno').replaceChildren(h('section', { class: 'card' }, h('h2', null, 'Acesso sem ficha'), h('p', { class: 'sub' }, 'Este login não está ligado a nenhuma ficha de aluno. Peça um novo convite ao seu personal.'))); }
     } catch (e) { aviso('msgGlobal', erroBanco(e)); }
   }
@@ -1105,7 +1198,8 @@ function iniciar() {
     Object.assign(est, { papel: null, usuario: null }); // antes de fechar: fechar o guia ao sair não conta como visto
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     Object.assign(est, { papel: null, usuario: null, personal: null, alunos: [], rascunho: null, rascunhoChave: null });
-    est.avs.clear(); $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
+    est.avs.clear(); est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
+    $('navAluno').classList.add('hidden'); document.body.classList.remove('com-nav'); menuConta(false);
     $('senha').value = ''; mostrar('loginView');
   }
   $('loginForm').addEventListener('submit', async ev => {
@@ -1118,7 +1212,7 @@ function iniciar() {
     aviso('loginMsg', error ? (/invalid/i.test(error.message) ? 'E-mail ou senha incorretos.' : error.status === 429 ? 'Muitas tentativas. Aguarde alguns minutos.' : 'Não foi possível entrar. Verifique a conexão.') : '');
   });
   $('sairBtn').addEventListener('click', async () => { esquecerAtividade(); await db.auth.signOut({ scope: 'local' }); });
-  window.addEventListener('hashchange', rotear);
+  window.addEventListener('hashchange', () => (est.papel === 'aluno' ? rotearAluno() : rotear()));
 
   const convite = conviteDoLink(location.search), codigo = convite.codigo, ehPersonal = convite.tipo === 'personal', conviteLigado = { sim: convite.tipo !== null };
   async function chamarCadastro(corpo) {

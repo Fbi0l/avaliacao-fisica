@@ -1,6 +1,6 @@
 # Novo design — direções visuais (05/11/2026)
 
-Material de base para a futura mudança de visual do app. **Nada disto está no app ainda**: o app publicado continua com o visual atual. A direção final ainda não foi escolhida.
+Material de base da mudança de visual. **Escolhida: A · Coral**, revisada em 09/11/2026 (skills de UX e Lei de Jakob) na tela de design "Avaliação Física — Coral revisado" e aplicada ao app na versão 0.9.0. O resto deste arquivo é o histórico da escolha.
 
 - `avaliacao-fisica-direcoes-visuais.jpg`: as 3 direções lado a lado, cada uma com 3 telas (início do aluno, resultado da avaliação, evolução).
 - `telas/`: o código de cada tela (formato da tela de design do Claude, `.dc.html`). `Main.dc.html` é o início da direção A. `_todas-juntas.html` abre as 9 telas numa página só, no navegador.

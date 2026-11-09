@@ -2,7 +2,7 @@
 
 App para o personal trainer avaliar alunos e acompanhar a evolução; o aluno vê os próprios resultados. Site estático (HTML, CSS e JavaScript puros, sem build) com Supabase para banco, login e regras de acesso, no GitHub Pages, instalável no celular. Mesmo padrão do app `financeiro-pessoal`. Responda sempre em português do Brasil, em linguagem simples: o dono não é programador.
 
-Nome do app provisório. Identidade visual e design definitivos ficam para depois (base em `docs/design/`).
+Nome do app provisório. Visual: Coral revisado desde a 0.9.0.
 
 ## Onde fica cada coisa
 
@@ -12,7 +12,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - `supabase/migrations/`: banco. O nome do arquivo deve usar a versão que o Supabase registrar ao aplicar.
 - `supabase/functions/registrar-aluno/`: cadastro pelo convite: do aluno (aceite do termo LGPD) e, com `tipo: 'personal'`, de um novo personal (termo do personal, `TERMO_PERSONAL_VERSAO` igual no `app.js`). Publicar com verificação de JWT desligada (confere tudo por conta própria).
 - Proposta e decisões: documento "Sistema de Avaliação Física — Proposta" (Claude Docs). Protótipo navegável: artifact "Avaliação Física".
-- Novo design: `docs/design/` (análise das referências Bluefit e Sky Fit, 3 direções visuais com cores e fontes, JPG e telas). Ainda não escolhido nem aplicado ao app; leia `docs/design/README.md` antes de mexer no visual.
+- Design: direção "A · Coral" revisada (skills de UX + Lei de Jakob), aprovada pelo dono e aplicada na 0.9.0. Tela de design "Avaliação Física — Coral revisado" (Claude Design: aluno, personal e chat). Tokens no topo do `styles.css` (claro e escuro); coral só em ações/seleção, texto coral sobre fundo claro usa `--accent-text`; status sempre com seta/palavra. Fontes Outfit + Work Sans em `assets/fonts` (OFL), nunca de fora (CSP). Navegação: aluno com abas embaixo (`#inicio`, `#avaliacoes`, `#av-<id>`, `#evolucao`, `#perfil`); personal com lista + ficha; resultado em seções `<details>` (`secao()` no `app.js`). Histórico das direções em `docs/design/`.
 
 ## Modelo
 

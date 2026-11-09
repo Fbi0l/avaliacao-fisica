@@ -146,14 +146,28 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.ok(A.avaliacoesExemplo('x')[0].postura.itens.lombar, 'aluna de exemplo com postura');
 }
 
+// 0.9.0: abas do aluno e filtros da lista de alunos
+{
+  for (const t of ['inicio', 'avaliacoes', 'evolucao', 'perfil']) assert.deepEqual(A.lerRota('#' + t), { tela: t });
+  assert.deepEqual(A.lerRota('#evolucaox'), { tela: 'inicio' });
+  const hoje = '2026-11-09';
+  assert.deepEqual(A.filtrosDoAluno({ usuario_id: 'u' }, { ultima: '2026-10-14', n: 3 }, hoje), { reavaliar: false, semAcesso: false });
+  assert.equal(A.filtrosDoAluno({ usuario_id: 'u' }, { ultima: '2026-08-11', n: 1 }, hoje).reavaliar, false, '90 dias ainda não');
+  assert.equal(A.filtrosDoAluno({ usuario_id: 'u' }, { ultima: '2026-08-10', n: 1 }, hoje).reavaliar, true, '91 dias: reavaliar');
+  assert.equal(A.filtrosDoAluno({ usuario_id: null }, undefined, hoje).reavaliar, true, 'sem avaliação: reavaliar');
+  assert.equal(A.filtrosDoAluno({ usuario_id: null }, undefined, hoje).semAcesso, true);
+  assert.deepEqual(A.filtrosDoAluno({ usuario_id: null, exemplo: true }, undefined, hoje), { reavaliar: false, semAcesso: false }, 'exemplo fora dos filtros');
+  assert.equal(A.DIAS_REAVALIAR, 90);
+}
+
 // Guia de uso revisado a cada versão (pedido do dono em 09/11/2026)
 {
   const versao = require('../package.json').version;
   assert.equal(A.GUIA_REVISADO_NA_VERSAO, versao, `Versão ${versao}: revise o guia de primeiro acesso (PASSOS_TUTORIAL_*) e suba GUIA_REVISADO_NA_VERSAO no app.js.`);
   const textoGuia = passos => passos.map(p => [p.titulo, p.texto, ...p.itens].join(' ')).join(' ').toLowerCase();
   const personal = textoGuia(A.PASSOS_TUTORIAL_PERSONAL), aluno = textoGuia(A.PASSOS_TUTORIAL_ALUNO);
-  for (const t of ['outro exercício', 'zonas de treino', '8 etapas', 'flexiteste', 'cooper', 'postura']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
-  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas'); assert.ok(aluno.includes('testes físicos'), 'guia do aluno sem os testes'); assert.ok(aluno.includes('postural'), 'guia do aluno sem a postura');
+  for (const t of ['outro exercício', 'zonas de treino', '8 etapas', 'flexiteste', 'cooper', 'postura', 'menu da conta', 'reavaliar']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
+  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas'); assert.ok(aluno.includes('testes físicos'), 'guia do aluno sem os testes'); assert.ok(aluno.includes('postural'), 'guia do aluno sem a postura'); for (const t of ['início', 'avaliações', 'evolução', 'perfil']) assert.ok(aluno.includes(t), 'guia do aluno sem a aba ' + t);
   assert.ok(!personal.includes('etnia'), 'guia ainda fala de etnia');
 }
 
