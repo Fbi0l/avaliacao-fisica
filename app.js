@@ -5,7 +5,7 @@
 // Projeto Supabase "avaliacao-fisica" (São Paulo). Só o endereço e a chave PUBLICÁVEL; nunca a secreta.
 const SUPABASE_URL = 'https://rsgbuvjrkrrybzoacjrh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x1nqjAFBALSgKIXoaDxrXg_pBHxArki';
-const TERMO_VERSAO = '2026-11-04'; // igual ao da função registrar-aluno
+const TERMO_VERSAO = '2026-11-09'; // igual ao da função registrar-aluno
 const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
@@ -45,7 +45,7 @@ function situacaoConvite(c) {
 }
 function expirouPorInatividade(ultima, agora, limite = INATIVIDADE_MS) { const t = Number(ultima); return Number.isFinite(t) && t > 0 && agora - t > limite; }
 
-/** Lê a rota do endereço (#aluno-<id>, #aluno-<id>-evolucao, #av-<id>, #nova-<id>, #editar-<id>). */
+/** Lê a rota do endereço (#aluno-<id>, #aluno-<id>-evolucao, #av-<id>, #nova-<id>, #editar-<id>, #conversa-<id>, #mensagens). */
 function lerRota(hash) {
   const h = String(hash || '').replace(/^#/, '');
   const uuid = '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})';
@@ -54,7 +54,8 @@ function lerRota(hash) {
   if ((m = h.match(new RegExp(`^av-${uuid}$`)))) return { tela: 'avaliacao', id: m[1] };
   if ((m = h.match(new RegExp(`^nova-${uuid}$`)))) return { tela: 'nova', id: m[1] };
   if ((m = h.match(new RegExp(`^editar-${uuid}$`)))) return { tela: 'editar', id: m[1] };
-  if (/^(inicio|avaliacoes|evolucao|perfil)$/.test(h)) return { tela: h };
+  if ((m = h.match(new RegExp(`^conversa-${uuid}$`)))) return { tela: 'conversa', id: m[1] };
+  if (/^(inicio|avaliacoes|evolucao|perfil|mensagens)$/.test(h)) return { tela: h };
   return { tela: 'inicio' };
 }
 
@@ -237,6 +238,42 @@ function temAlgumaMedida(reg) {
 }
 
 /** Diferença com sentido: 'bom', 'ruim' ou 'neutro', conforme a direção desejada (1 sobe, -1 desce, 0 tanto faz). */
+/* ---------- Mensagens (1.0.0): conversa de cada aluno com o personal dele ---------- */
+const MENSAGEM_MAX = 2000;
+const INTERVALO_MENSAGENS_MS = 20000; // procura mensagens novas a cada 20 s, com o app aberto na tela
+/** Texto pronto para enviar: sem espaços nas pontas; null se vazio. */
+function limparMensagem(t) { const x = String(t ?? '').trim(); return x || null; }
+/** Por aluno: a última mensagem e quantas o usuário ainda não leu (as que ele mesmo enviou não contam). */
+function resumoConversas(msgs, eu) {
+  const r = new Map();
+  for (const m of msgs || []) {
+    const o = r.get(m.aluno_id) || { ultima: null, naoLidas: 0 };
+    if (!o.ultima || m.criado_em > o.ultima.criado_em) o.ultima = m;
+    if (m.autor !== eu && !m.lida_em) o.naoLidas++;
+    r.set(m.aluno_id, o);
+  }
+  return r;
+}
+const diaDe = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+/** Dias entre a data da mensagem e hoje (0 = hoje, 1 = ontem), no fuso do aparelho. */
+const diasAtras = (iso, agora = new Date()) => Math.round((diaDe(agora) - diaDe(new Date(iso))) / 864e5);
+/** Separador da conversa: "Hoje", "Ontem" ou "14 de outubro" (com o ano, se for de outro ano). */
+function rotuloDia(iso, agora = new Date()) {
+  const n = diasAtras(iso, agora), d = new Date(iso);
+  if (n === 0) return 'Hoje';
+  if (n === 1) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: d.getFullYear() === agora.getFullYear() ? undefined : 'numeric' });
+}
+const horaCurta = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+/** Na lista de conversas: hora (hoje), "Ontem", dia da semana (até 6 dias) ou dd/mm. */
+function quandoNaLista(iso, agora = new Date()) {
+  const n = diasAtras(iso, agora), d = new Date(iso);
+  if (n <= 0) return horaCurta(iso);
+  if (n === 1) return 'Ontem';
+  if (n < 7) { const w = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''); return w[0].toUpperCase() + w.slice(1); }
+  return `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}`;
+}
+
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
 
@@ -256,7 +293,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '0.10.0';
+const GUIA_REVISADO_NA_VERSAO = '1.0.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -276,6 +313,9 @@ const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✉', titulo: '5. Convide o aluno',
     texto: 'Na ficha do aluno, “Convidar” gera um link de uso único para ele.',
     itens: ['O aluno aceita o termo de uso dos dados (LGPD), cria uma senha e vê só a própria evolução, em linguagem simples.', 'O aluno de exemplo não recebe convite. Quando não precisar mais dele, apague em “Editar”.'] },
+  { icone: '✎', titulo: '6. Mensagens',
+    texto: 'Converse com cada aluno pelo próprio app, sem misturar com o WhatsApp.',
+    itens: ['O balão no topo abre as conversas; o número em coral mostra quantas mensagens você ainda não leu.', 'Na ficha do aluno, “Mensagem” abre a conversa com ele. Pelo clipe, você envia uma avaliação: o aluno toca no cartão e ela abre.', 'Só alunos com acesso ao app conversam. Quem ainda não entrou aparece com “Convidar”.', 'As mensagens são dados do aluno: só vocês dois leem e elas são apagadas junto se ele pedir a exclusão.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
     itens: ['“Meus dados”, “Personais” e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
@@ -283,7 +323,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
 const PASSOS_TUTORIAL_ALUNO = [
   { icone: '✦', titulo: 'Bem-vindo!',
     texto: 'Aqui você acompanha as avaliações físicas que o seu personal registra.',
-    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.', 'As abas embaixo levam a cada parte: Início, Avaliações, Evolução e Perfil.'] },
+    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.', 'As abas embaixo levam a cada parte: Início, Avaliações, Evolução, Mensagens e Perfil.'] },
   { icone: '⌂', titulo: 'Início',
     texto: 'Os principais resultados da última avaliação: gordura, massa muscular, peso e cintura, e o recado do seu personal.',
     itens: ['As setas mostram o que mudou desde a primeira avaliação. Verde quer dizer que mudou na direção boa.', '“Ver a avaliação completa” abre todos os detalhes.'] },
@@ -293,6 +333,9 @@ const PASSOS_TUTORIAL_ALUNO = [
   { icone: '↗', titulo: 'Evolução e zonas',
     texto: 'O gráfico mostra como cada medida mudou; escolha a medida nos botões acima dele.',
     itens: ['Zonas de frequência cardíaca: em que batimentos treinar cada intensidade.', 'Zonas de carga: digite a carga de um exercício e veja se está em resistência, hipertrofia ou força.', 'A cada nova avaliação, tudo se atualiza sozinho.'] },
+  { icone: '✎', titulo: 'Mensagens',
+    texto: 'Converse com o seu personal pelo app: dúvidas sobre a avaliação, o treino ou o que precisar.',
+    itens: ['O número em coral na aba Mensagens mostra quantas você ainda não leu.', 'Quando o personal envia uma avaliação, toque no cartão para abrir.', '“lida” embaixo da sua mensagem quer dizer que o personal já viu.', 'Só você e o seu personal leem a conversa.'] },
   { icone: '?', titulo: 'Perfil e seus dados',
     texto: 'Na aba Perfil você revê este guia e sai do app.',
     itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
@@ -358,7 +401,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, filtrosDoAluno, temAlgumaMedida, DIAS_REAVALIAR, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
+  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, filtrosDoAluno, temAlgumaMedida, DIAS_REAVALIAR, TERMO_VERSAO, hojeISO, fmt, MENSAGEM_MAX, limparMensagem, resumoConversas, rotuloDia, quandoNaLista, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
 } else {
   iniciar();
 }
@@ -405,7 +448,7 @@ function iniciar() {
     return;
   }
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
-  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null };
+  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null, chat: { resumo: new Map(), aberto: null } };
 
   /* ----- Confirmação ----- */
   function confirmar({ titulo, texto, botao = 'Excluir' }) {
@@ -441,6 +484,7 @@ function iniciar() {
 
   /* ----- Lista de alunos ----- */
   function desenharLista(atual) {
+    est.listaAtual = atual;
     const termo = est.busca.trim().toLowerCase();
     const hoje = hojeISO(), contas = { todos: est.alunos.length, reavaliar: 0, sem_acesso: 0 };
     for (const a of est.alunos) { const f = filtrosDoAluno(a, est.resumo.get(a.id), hoje); if (f.reavaliar) contas.reavaliar++; if (f.semAcesso) contas.sem_acesso++; }
@@ -454,8 +498,10 @@ function iniciar() {
     if (!lista.length) { $('listaAlunos').replaceChildren(h('p', { class: 'vazio' }, est.alunos.length ? 'Nenhum aluno com esse nome.' : 'Nenhum aluno ainda. Toque em “Novo aluno”.')); return; }
     $('listaAlunos').replaceChildren(...lista.map(a => {
       const r = est.resumo.get(a.id), f = filtrosDoAluno(a, r, hoje);
+      const naoLidas = est.chat.resumo.get(a.id)?.naoLidas || 0;
       return h('button', { class: 'aluno-btn', type: 'button', 'aria-current': String(a.id === atual), onclick: () => ir('aluno-' + a.id) },
-        h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(a.nome)),
+        h('span', { class: 'avatar com-badge', 'aria-hidden': naoLidas ? null : 'true' }, h('span', { 'aria-hidden': 'true' }, iniciais(a.nome)),
+          naoLidas ? h('span', { class: 'badge' }, String(naoLidas), h('span', { class: 'sr-only' }, naoLidas === 1 ? ' mensagem não lida' : ' mensagens não lidas')) : null),
         h('span', null, h('strong', null, a.nome), h('small', { class: f.reavaliar ? 'reavaliar' : null },
           (a.exemplo ? 'Exemplo · ' : '') + (f.reavaliar ? (r ? `Reavaliar · última em ${dataBR(r.ultima)}` : 'Reavaliar · sem avaliação') : r ? `${r.n} aval. · última ${dataBR(r.ultima)}` : 'Sem avaliação'))));
     }));
@@ -467,7 +513,9 @@ function iniciar() {
     if (est.papel !== 'personal') return;
     const r = lerRota(location.hash);
     const p = $('principal');
+    est.chat.aberto = null;
     $('areaPersonal').classList.toggle('com-foco', r.tela !== 'inicio'); // no celular, esconde a lista de alunos
+    $('msgBtn').setAttribute('aria-current', r.tela === 'mensagens' || r.tela === 'conversa' ? 'page' : 'false');
     try {
       if (r.tela === 'aluno' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(await telaAluno(alunoPorId(r.id), r.aba))); }
       else if (r.tela === 'avaliacao' || r.tela === 'editar') {
@@ -475,6 +523,12 @@ function iniciar() {
         if (!av) return ir('inicio');
         desenharLista(av.aluno_id);
         p.replaceChildren(...soElementos(r.tela === 'avaliacao' ? telaResultado(alunoPorId(av.aluno_id), av) : telaFormulario(alunoPorId(av.aluno_id), av)));
+      } else if (r.tela === 'mensagens') { desenharLista(null); p.replaceChildren(...soElementos(telaMensagens())); }
+      else if (r.tela === 'conversa' && podeConversar(alunoPorId(r.id))) {
+        const a = alunoPorId(r.id), avs = await avaliacoesDe(a.id), ult = avs.at(-1);
+        desenharLista(a.id);
+        p.replaceChildren(telaConversa({ alunoId: a.id, nome: a.nome, detalhe: ult ? `Última avaliação em ${dataMsg(ult.data)}` : 'Sem avaliação ainda', voltar: '#mensagens', ficha: '#aluno-' + a.id, avaliacoes: avs }));
+        atualizarConversa(); return;
       } else if (r.tela === 'nova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(telaFormulario(alunoPorId(r.id), null))); }
       else {
         desenharLista(null);
@@ -503,6 +557,8 @@ function iniciar() {
       h('div', { class: 'linha' },
         h('button', { class: 'btn', type: 'button', onclick: () => abrirAluno(a) }, 'Editar'),
         a.exemplo ? null : h('button', { class: 'btn', type: 'button', onclick: () => abrirConvite(a) }, a.usuario_id ? 'Acesso do aluno' : 'Convidar'),
+        podeConversar(a) ? h('a', { class: 'btn', href: '#conversa-' + a.id }, ic('M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z', 18), 'Mensagem',
+          est.chat.resumo.get(a.id)?.naoLidas ? h('span', { class: 'badge' }, String(est.chat.resumo.get(a.id).naoLidas), h('span', { class: 'sr-only' }, ' não lidas')) : null) : null,
         h('button', { class: 'btn primary', type: 'button', onclick: () => ir('nova-' + a.id) }, '+ Nova avaliação'))));
     const abas = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções do aluno' },
       [['avaliacoes', 'Avaliações', ''], ['evolucao', 'Evolução', '-evolucao'], ['comparar', 'Comparar', '-comparar']].map(([k, t, suf]) =>
@@ -912,7 +968,7 @@ function iniciar() {
   $('alExcluir').addEventListener('click', async () => {
     const a = est.editandoAluno; if (!a) return;
     $('alunoDialog').close();
-    if (!(await confirmar({ titulo: 'Excluir aluno e todos os dados?', botao: 'Excluir tudo', texto: `${a.nome}, todas as avaliações${a.usuario_id ? ', o aceite do termo e o acesso ao app' : ''} serão apagados de vez. Use quando o aluno pedir a exclusão dos dados (LGPD). Não dá para desfazer.` }))) return;
+    if (!(await confirmar({ titulo: 'Excluir aluno e todos os dados?', botao: 'Excluir tudo', texto: `${a.nome}, todas as avaliações${a.usuario_id ? ', as mensagens, o aceite do termo e o acesso ao app' : ''} serão apagados de vez. Use quando o aluno pedir a exclusão dos dados (LGPD). Não dá para desfazer.` }))) return;
     const { data, error } = await db.rpc('excluir_aluno', { p_aluno: a.id });
     if (error || !data) return aviso('msgGlobal', erroBanco(error));
     est.avs.delete(a.id); await carregarPersonal();
@@ -1032,11 +1088,13 @@ function iniciar() {
     if (est.papel !== 'aluno' || !est.aluno) return;
     const r = lerRota(location.hash), { eu, avs } = est.aluno;
     const v = r.tela === 'avaliacao' ? avs.find(x => x.id === r.id) : null;
-    const aba = v ? 'avaliacoes' : ['avaliacoes', 'evolucao', 'perfil'].includes(r.tela) ? r.tela : 'inicio';
+    const aba = v ? 'avaliacoes' : ['avaliacoes', 'evolucao', 'perfil', 'mensagens'].includes(r.tela) ? r.tela : 'inicio';
+    est.chat.aberto = null;
     document.querySelectorAll('#navAluno a').forEach(a => a.setAttribute('aria-current', a.dataset.aba === aba ? 'page' : 'false'));
-    const tela = v ? telaResultado(eu, v, { paraAluno: true }) : aba === 'avaliacoes' ? alunoAvaliacoes() : aba === 'evolucao' ? alunoEvolucao() : aba === 'perfil' ? alunoPerfil() : alunoInicio();
+    const tela = v ? telaResultado(eu, v, { paraAluno: true }) : aba === 'avaliacoes' ? alunoAvaliacoes() : aba === 'evolucao' ? alunoEvolucao() : aba === 'perfil' ? alunoPerfil() : aba === 'mensagens' ? alunoMensagens() : alunoInicio();
     $('areaAluno').replaceChildren(...soElementos(tela));
     window.scrollTo({ top: 0 });
+    if (aba === 'mensagens') atualizarConversa();
   }
   function alunoInicio() {
     const { eu, avs, personal } = est.aluno;
@@ -1053,7 +1111,8 @@ function iniciar() {
         kpi('Massa muscular', c.massaMuscular, 'kg', delta(c.massaMuscular - c0.massaMuscular, 'kg', 1)),
         kpi('Peso', c.peso, 'kg', delta((c.peso ?? NaN) - (c0.peso ?? NaN), 'kg', 0)),
         kpi('Cintura', ult.perimetros?.cintura ?? null, 'cm', delta((ult.perimetros?.cintura ?? NaN) - (pri.perimetros?.cintura ?? NaN), 'cm', -1))),
-      h('section', { class: 'card recado' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
+      h('section', { class: 'card recado' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.'),
+        h('a', { class: 'btn', href: '#mensagens' }, ic('M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z', 18), `Conversar com ${personal}`)),
       h('a', { class: 'btn primary grande', href: '#av-' + ult.id }, 'Ver a avaliação completa ›')];
   }
   function alunoAvaliacoes() {
@@ -1098,9 +1157,149 @@ function iniciar() {
       h('section', { class: 'card' }, h('div', { class: 'ficha-cab' }, h('span', { class: 'avatar grande', 'aria-hidden': 'true' }, iniciais(eu.nome)),
         h('div', null, h('h2', null, eu.nome), h('p', { class: 'sub' }, `Seu personal: ${personal}`)))),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Seus dados'),
-        h('p', { class: 'parecer' }, `Só você e ${personal} veem as suas avaliações pelo app. Para corrigir alguma informação ou pedir a exclusão completa dos seus dados, fale com ${personal}.`)),
+        h('p', { class: 'parecer' }, `Só você e ${personal} veem as suas avaliações pelo app. As mensagens de vocês também. Para corrigir alguma informação ou pedir a exclusão completa dos seus dados (avaliações e mensagens), fale com ${personal}.`)),
       h('div', { class: 'linha' }, h('button', { class: 'btn', type: 'button', onclick: abrirTutorial }, 'Como usar o app'),
         h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => $('sairBtn').click() }, 'Sair'))];
+  }
+
+  /* ----- Mensagens: conversa do aluno com o personal (1.0.0) ----- */
+  const ic = (d, tam = 22) => s('svg', { width: tam, height: tam, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, [].concat(d).map(x => s('path', { d: x })));
+  const IC_ANEXO = 'M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9';
+  const IC_ENVIAR = ['M22 2L11 13', 'M22 2l-7 20-4-9-9-4z'];
+  const IC_FICHA = ['M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M9 8h6M9 12h6M9 16h4'];
+  const CAMPOS_MSG = 'id,aluno_id,autor,texto,avaliacao_id,criado_em,lida_em';
+  /** O aluno de exemplo e quem ainda não tem acesso ao app não conversam. */
+  const podeConversar = a => !!a && !a.exemplo && !!a.usuario_id;
+  async function carregarResumoMensagens() {
+    if (!est.usuario) return;
+    const { data, error } = await db.from('mensagens').select('aluno_id,autor,texto,avaliacao_id,criado_em,lida_em').order('criado_em', { ascending: false }).limit(1000);
+    if (error) return; // sem conexão: tenta de novo na próxima volta
+    est.chat.resumo = resumoConversas(data, est.usuario.id);
+    atualizarBadges();
+    if (est.papel === 'personal' && lerRota(location.hash).tela === 'mensagens' && !est.chat.aberto) $('principal').replaceChildren(...soElementos(telaMensagens()));
+  }
+  function atualizarBadges() {
+    let total = 0; for (const o of est.chat.resumo.values()) total += o.naoLidas;
+    const texto = total > 99 ? '99+' : String(total), rotulo = total ? `Mensagens, ${total} não ${total === 1 ? 'lida' : 'lidas'}` : 'Mensagens';
+    for (const id of ['msgBadge', 'navMsgBadge']) { $(id).textContent = texto; $(id).classList.toggle('hidden', !total); }
+    $('msgBtn').setAttribute('aria-label', rotulo); $('msgBtn').title = rotulo;
+    document.querySelector('#navAluno a[data-aba="mensagens"]')?.setAttribute('aria-label', rotulo);
+    if (est.papel === 'personal' && !$('listaAlunos').contains(document.activeElement)) desenharLista(est.listaAtual ?? null);
+  }
+  /** "14 out" (com o ano se não for deste ano), como nos cartões do design. */
+  const dataMsg = iso => { const [y, m, d] = String(iso).split('-').map(Number), t = new Date(y, m - 1, d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '').replace(' de ', ' ');
+    return y === new Date().getFullYear() ? t : `${t} ${y}`; };
+  const previa = m => (m.autor === est.usuario.id ? 'Você: ' : '') + (m.texto || 'Avaliação enviada');
+
+  /** Personal: lista de conversas, as mais recentes primeiro (como nos apps de mensagem). */
+  function telaMensagens() {
+    const alunos = est.alunos.filter(a => !a.exemplo), r = est.chat.resumo;
+    const comConversa = alunos.filter(podeConversar).sort((x, y) => (r.get(y.id)?.ultima?.criado_em || '').localeCompare(r.get(x.id)?.ultima?.criado_em || '') || x.nome.localeCompare(y.nome));
+    const semAcesso = alunos.filter(a => !podeConversar(a));
+    const item = a => { const o = r.get(a.id), m = o?.ultima;
+      return h('a', { class: 'conversa-item' + (o?.naoLidas ? ' nova' : ''), href: '#conversa-' + a.id },
+        h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(a.nome)),
+        h('span', { class: 'c-meio' }, h('strong', null, a.nome), h('span', { class: 'c-previa' }, m ? previa(m) : 'Nenhuma mensagem ainda. Toque para começar.')),
+        h('span', { class: 'c-fim' }, m ? h('span', { class: 'c-hora' }, quandoNaLista(m.criado_em)) : null,
+          o?.naoLidas ? h('span', { class: 'badge' }, String(o.naoLidas), h('span', { class: 'sr-only' }, o.naoLidas === 1 ? ' não lida' : ' não lidas')) : null)); };
+    return [h('div', { class: 'linha so-cel' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('inicio') }, '‹ Alunos')),
+      h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Mensagens'), h('p', { class: 'sub' }, 'Conversas com os seus alunos.'))),
+        comConversa.length ? h('div', { class: 'lista-conversas' }, comConversa.map(item))
+          : h('p', { class: 'aviso' }, alunos.length ? 'Nenhum aluno com acesso ao app ainda. Convide um aluno para conversar com ele por aqui.' : 'Cadastre e convide um aluno para conversar com ele por aqui.'),
+        semAcesso.length ? h('div', { class: 'lista-conversas sem-acesso' }, h('h3', { class: 'titulo-secao' }, 'Sem acesso ao app'),
+          semAcesso.map(a => h('div', { class: 'conversa-item' }, h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(a.nome)),
+            h('span', { class: 'c-meio' }, h('strong', null, a.nome), h('span', { class: 'c-previa' }, 'Convide para conversar pelo app')),
+            h('button', { class: 'btn', type: 'button', onclick: () => abrirConvite(a) }, 'Convidar')))) : null,
+        h('p', { class: 'sub nota-chat' }, 'Só você e o aluno veem a conversa. As mensagens fazem parte dos dados do aluno e são apagadas junto quando ele pede a exclusão.'))];
+  }
+
+  /** Tela da conversa (personal e aluno). A lista se atualiza sozinha sem apagar o que está sendo digitado. */
+  function telaConversa({ alunoId, nome, detalhe, paraAluno, voltar, ficha, avaliacoes }) {
+    const lista = h('div', { class: 'chat-lista', role: 'log', 'aria-label': `Conversa com ${nome}`, 'aria-live': 'polite' }, h('p', { class: 'vazio' }, 'Carregando…'));
+    const campo = h('textarea', { class: 'chat-campo', rows: '1', maxlength: String(MENSAGEM_MAX), placeholder: 'Mensagem', 'aria-label': `Mensagem para ${nome}` });
+    const msg = h('p', { class: 'msg', role: 'status', 'aria-live': 'polite' });
+    const enviarBtn = h('button', { class: 'chat-enviar', type: 'submit', 'aria-label': 'Enviar mensagem' }, ic(IC_ENVIAR));
+    const ajustar = () => { campo.style.height = 'auto'; campo.style.height = Math.min(campo.scrollHeight, 140) + 'px'; };
+    campo.addEventListener('input', ajustar);
+    campo.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && matchMedia('(pointer: fine)').matches) { ev.preventDefault(); form.requestSubmit(); } });
+    let painel = null, anexoBtn = null;
+    if (avaliacoes) {
+      painel = h('div', { class: 'chat-anexos hidden', id: 'chatAnexos' }, h('p', { class: 'sub' }, avaliacoes.length ? 'Enviar uma avaliação para o aluno abrir pelo app:' : 'Este aluno ainda não tem avaliação.'),
+        [...avaliacoes].reverse().slice(0, 6).map(v => h('button', { class: 'btn', type: 'button', onclick: () => { painel.classList.add('hidden'); anexoBtn.setAttribute('aria-expanded', 'false'); enviar({ avaliacao_id: v.id }); } }, `Avaliação de ${dataMsg(v.data)}`)));
+      anexoBtn = h('button', { class: 'chat-anexo', type: 'button', 'aria-label': 'Anexar uma avaliação', 'aria-expanded': 'false', 'aria-controls': 'chatAnexos',
+        onclick: () => { const abrir = painel.classList.contains('hidden'); painel.classList.toggle('hidden', !abrir); anexoBtn.setAttribute('aria-expanded', String(abrir)); } }, ic(IC_ANEXO));
+    }
+    async function enviar(dados) {
+      enviarBtn.disabled = true; msg.textContent = '';
+      const { error } = await db.from('mensagens').insert({ aluno_id: alunoId, ...dados });
+      enviarBtn.disabled = false;
+      if (error) { msg.textContent = /Failed to fetch|NetworkError/i.test(String(error.message)) ? 'Sem conexão. A mensagem não foi enviada.' : 'Não foi possível enviar. Tente de novo.'; return false; }
+      await atualizarConversa(true); return true;
+    }
+    const form = h('form', { class: 'chat-form', onsubmit: async ev => {
+      ev.preventDefault();
+      const texto = limparMensagem(campo.value);
+      if (!texto) return campo.focus();
+      if (await enviar({ texto })) { campo.value = ''; ajustar(); campo.focus(); }
+    } }, anexoBtn, campo, enviarBtn);
+    const cab = h('div', { class: 'chat-cab' },
+      voltar ? h('a', { class: 'btn ghost icone', href: voltar, 'aria-label': 'Voltar para as mensagens' }, ic('M19 12H5M12 19l-7-7 7-7')) : null,
+      h('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(nome)),
+      h('span', { class: 'c-meio' }, h('strong', null, nome), detalhe ? h('span', { class: 'c-previa' }, detalhe) : null),
+      ficha ? h('a', { class: 'btn', href: ficha }, ic(IC_FICHA, 18), 'Ficha') : null);
+    est.chat.aberto = { alunoId, lista, paraAluno, nome, assinatura: '', divisor: undefined };
+    return h('section', { class: 'card chat' + (paraAluno ? ' do-aluno' : '') }, cab, lista, h('div', { class: 'chat-pe' }, painel, msg, form));
+  }
+  /** Busca a conversa aberta, desenha (se mudou) e marca como lidas as mensagens recebidas. */
+  async function atualizarConversa(rolarSempre = false) {
+    const c = est.chat.aberto; if (!c) return;
+    const { data, error } = await db.from('mensagens').select(CAMPOS_MSG).eq('aluno_id', c.alunoId).order('criado_em').limit(500);
+    if (est.chat.aberto !== c) return; // trocou de tela enquanto buscava
+    if (error) { if (!c.assinatura) c.lista.replaceChildren(h('p', { class: 'aviso' }, 'Não foi possível abrir a conversa. Verifique a internet.')); return; }
+    const eu = est.usuario.id, recebidasNovas = data.filter(m => m.autor !== eu && !m.lida_em);
+    if (c.divisor === undefined) c.divisor = recebidasNovas[0]?.id || null; // "N novas" só na hora de abrir
+    if (est.papel === 'aluno' && data.some(m => m.avaliacao_id && !est.aluno.avs.some(v => v.id === m.avaliacao_id))) { await carregarAluno().catch(() => {}); if (est.chat.aberto !== c) return; }
+    const assinatura = data.map(m => m.id + (m.lida_em ? '+' : '')).join(',');
+    if (assinatura !== c.assinatura) {
+      const pertoDoFim = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+      c.assinatura = assinatura; desenharMensagens(c, data);
+      if (rolarSempre || pertoDoFim || c.primeira !== false) window.scrollTo({ top: document.documentElement.scrollHeight });
+      c.primeira = false;
+    }
+    if (recebidasNovas.length && document.visibilityState === 'visible') {
+      const { error: e2 } = await db.from('mensagens').update({ lida_em: new Date().toISOString() }).eq('aluno_id', c.alunoId).is('lida_em', null).neq('autor', eu);
+      if (!e2) { const o = est.chat.resumo.get(c.alunoId); if (o) { o.naoLidas = 0; atualizarBadges(); } }
+    } else if (est.chat.resumo.get(c.alunoId)?.naoLidas) carregarResumoMensagens();
+  }
+  function desenharMensagens(c, msgs) {
+    if (!msgs.length) { c.lista.replaceChildren(h('p', { class: 'chat-vazio' }, c.paraAluno ? `Mande uma mensagem para ${c.nome}: dúvidas sobre a avaliação, o treino ou o que precisar.` : `Nenhuma mensagem ainda. Escreva para ${primeiro(c.nome)} ou envie uma avaliação pelo clipe.`)); return; }
+    const eu = est.usuario.id, avs = est.papel === 'aluno' ? est.aluno.avs : est.avs.get(c.alunoId) || [];
+    const novas = c.divisor ? msgs.slice(msgs.findIndex(m => m.id === c.divisor)).filter(m => m.autor !== eu).length : 0;
+    const itens = []; let dia = null;
+    for (const m of msgs) {
+      const rot = rotuloDia(m.criado_em);
+      if (rot !== dia) { dia = rot; itens.push(h('p', { class: 'chat-dia' }, rot)); }
+      if (m.id === c.divisor) itens.push(h('p', { class: 'chat-novas' }, novas === 1 ? '1 nova' : `${novas} novas`));
+      const minha = m.autor === eu, rodape = h('span', { class: 'chat-hora' }, horaCurta(m.criado_em) + (minha && m.lida_em ? ' · lida' : ''));
+      const v = m.avaliacao_id ? avs.find(x => x.id === m.avaliacao_id) : null;
+      const cartao = m.avaliacao_id ? h('a', { class: 'chat-av', href: '#av-' + m.avaliacao_id },
+        h('span', { class: 'chat-av-ic', 'aria-hidden': 'true' }, ic(IC_FICHA)),
+        h('span', null, h('strong', null, v ? `Avaliação de ${dataMsg(v.data)}` : 'Avaliação'), h('span', { class: 'c-previa' }, minha ? 'Enviada' : 'Toque para ver'))) : null;
+      itens.push(h('div', { class: 'bolha ' + (minha ? 'minha' : 'dele') }, cartao, m.texto ? h('p', null, m.texto) : null, rodape));
+    }
+    c.lista.replaceChildren(...itens);
+  }
+  /** Volta de tempos em tempos (e ao voltar para o app) para trazer mensagens novas. */
+  async function verificarMensagens() {
+    if (!est.usuario || !est.papel || document.visibilityState !== 'visible') return;
+    if (est.chat.aberto) await atualizarConversa(); else await carregarResumoMensagens();
+    if (est.chat.aberto) carregarResumoMensagens();
+  }
+  setInterval(verificarMensagens, INTERVALO_MENSAGENS_MS);
+  document.addEventListener('visibilitychange', verificarMensagens);
+  function alunoMensagens() {
+    const { eu, personal } = est.aluno;
+    return telaConversa({ alunoId: eu.id, nome: personal === 'seu personal' ? 'Seu personal' : personal, detalhe: personal === 'seu personal' ? null : 'Seu personal', paraAluno: true });
   }
 
   /* ----- Guia de primeiro acesso e aluno de exemplo ----- */
@@ -1176,15 +1375,17 @@ function iniciar() {
     mostrar('appView');
     $('areaPersonal').classList.toggle('hidden', papel !== 'personal'); $('areaAluno').classList.toggle('hidden', papel !== 'aluno');
     $('perfilBtn').classList.toggle('hidden', papel !== 'personal');
+    $('msgBtn').classList.toggle('hidden', papel !== 'personal');
+    est.chat = { resumo: new Map(), aberto: null };
     $('personaisBtn').classList.add('hidden');
     if (papel === 'personal') db.rpc('sou_administrador').then(({ data }) => $('personaisBtn').classList.toggle('hidden', data !== true)).catch(() => {});
     try {
       if (papel === 'personal') {
         await carregarPersonal();
         if (deveCriarExemplo(est.usuario.user_metadata, est.alunos.length) && await criarAlunoExemplo()) await carregarPersonal();
-        rotear(); talvezMostrarTutorial();
+        await carregarResumoMensagens(); rotear(); talvezMostrarTutorial();
       }
-      else if (papel === 'aluno') { await carregarAluno(); $('navAluno').classList.remove('hidden'); document.body.classList.add('com-nav'); rotearAluno(); talvezMostrarTutorial(); }
+      else if (papel === 'aluno') { await carregarAluno(); await carregarResumoMensagens(); $('navAluno').classList.remove('hidden'); document.body.classList.add('com-nav'); rotearAluno(); talvezMostrarTutorial(); }
       else { $('areaAluno').classList.remove('hidden'); $('areaAluno').replaceChildren(h('section', { class: 'card' }, h('h2', null, 'Acesso sem ficha'), h('p', { class: 'sub' }, 'Este login não está ligado a nenhuma ficha de aluno. Peça um novo convite ao seu personal.'))); }
     } catch (e) { aviso('msgGlobal', erroBanco(e)); }
   }
@@ -1194,6 +1395,7 @@ function iniciar() {
     Object.assign(est, { papel: null, usuario: null, personal: null, alunos: [], rascunho: null, rascunhoChave: null });
     est.avs.clear(); est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
     $('navAluno').classList.add('hidden'); document.body.classList.remove('com-nav'); menuConta(false);
+    est.chat = { resumo: new Map(), aberto: null }; $('msgBtn').classList.add('hidden'); atualizarBadges();
     $('senha').value = ''; mostrar('loginView');
   }
   $('loginForm').addEventListener('submit', async ev => {

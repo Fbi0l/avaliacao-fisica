@@ -2,6 +2,14 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.0.0 — Mensagens
+
+- **Chat entre o aluno e o personal** (fase 5 das sugestões do professor). O personal tem o balão de mensagens no topo, com o número de não lidas, a lista de conversas (mais recentes primeiro; quem ainda não tem acesso aparece com "Convidar") e o botão **Mensagem** na ficha do aluno. O aluno ganhou a aba **Mensagens** embaixo e o atalho "Conversar com…" no Início.
+- O personal pode **enviar uma avaliação pelo clipe**: o aluno toca no cartão e ela abre. Mensagens marcadas como "lida" quando o outro abre a conversa; separadores de dia e a linha "N novas". O app procura mensagens novas a cada 20 segundos com a tela aberta.
+- Segurança: cada conversa é só do aluno e do personal dele (regras de acesso no banco); o banco preenche quem escreveu, a data e o personal, e ninguém edita nem apaga mensagens pelo app. O aluno de exemplo e alunos sem acesso não conversam. As mensagens são apagadas junto com o aluno na exclusão (LGPD).
+- **Termo do aluno atualizado** (versão 2026-11-09): passa a citar as mensagens. Vale para novos convites; quem já aceitou continua com o aceite registrado na versão anterior.
+- Banco: tabela `mensagens` (migração `chat`). Guia de uso atualizado (personal e aluno).
+
 ## Versão 0.10.0 — Etapas independentes
 
 - **Nenhuma etapa da avaliação é obrigatória**, nem peso e altura (pedido do dono: por exemplo, o personal não consegue medir as próprias dobras). Dá para registrar só os testes, só a postura, perímetros sem dobras, só o peso ou só um parecer; basta ter alguma coisa.

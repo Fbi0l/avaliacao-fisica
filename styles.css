@@ -360,7 +360,7 @@ details.secao[open]>summary::after{transform:rotate(-135deg) translate(-2px,-2px
 details.secao>.s-corpo{padding:0 18px 18px;display:grid;gap:12px}
 @media (prefers-reduced-motion:reduce){details.secao>summary::after{transition:none}}
 /* Aluno: barra de abas embaixo, como nos apps de saúde e redes sociais */
-.nav-aluno{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--line);padding:6px max(4px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left))}
+.nav-aluno{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--line);padding:6px max(4px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left))}
 .nav-aluno a{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:none}
 .nav-ic{width:56px;height:30px;border-radius:999px;display:grid;place-items:center}
 .nav-aluno a[aria-current="page"]{color:var(--accent-text);font-weight:600}
@@ -412,3 +412,62 @@ a.btn{text-decoration:none;color:var(--ink)}
 a.btn.primary{color:var(--accent-ink)}
 a.btn.ghost{color:var(--accent-text)}
 @media (max-width:600px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi .v{font-size:24px}}
+
+/* ---------- Mensagens (1.0.0) ---------- */
+.com-badge{position:relative}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.com-badge>.badge{position:absolute;top:2px;right:0;border:2px solid var(--surface)}
+.avatar.com-badge>.badge{top:-6px;right:-8px;min-width:18px;height:18px;font-size:11px;padding:0 5px}
+.nav-ic.com-badge>.badge{top:-4px;right:-10px}
+#msgBtn{color:var(--ink);text-decoration:none}
+#msgBtn[aria-current="page"]{background:var(--accent-soft);color:var(--accent-text)}
+.btn>.badge{margin-left:2px}
+.lista-conversas{display:grid;gap:2px;margin-top:8px}
+.lista-conversas.sem-acesso{margin-top:18px}
+.conversa-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 8px;border-radius:12px;color:var(--ink);text-decoration:none;min-height:64px}
+a.conversa-item:hover{background:var(--surface-2)}
+.conversa-item .avatar{width:44px;height:44px;font-size:15px}
+.c-meio{display:flex;flex-direction:column;gap:2px;min-width:0}
+.c-meio strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-previa{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conversa-item.nova .c-previa{color:var(--ink);font-weight:500}
+.c-fim{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.c-hora{font-size:12px;color:var(--muted)}
+.conversa-item.nova .c-hora{color:var(--accent-text);font-weight:600}
+.nota-chat{margin-top:16px}
+.chat{display:flex;flex-direction:column;gap:0;padding:0;overflow:visible}
+.chat-cab{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.chat-cab .c-meio{flex:1}
+.chat-cab .btn{text-decoration:none;color:var(--ink)}
+.chat-lista{display:flex;flex-direction:column;gap:8px;padding:14px;min-height:240px}
+.chat-dia{align-self:center;margin:6px 0 2px;font-size:12px;font-weight:600;color:var(--muted);background:var(--surface-2);padding:4px 10px;border-radius:999px}
+.chat-novas{display:flex;align-items:center;gap:8px;margin:2px 0;font-size:12px;font-weight:600;color:var(--accent-text)}
+.chat-novas::before,.chat-novas::after{content:"";flex:1;height:1px;background:var(--accent-soft)}
+.chat-vazio{margin:auto;max-width:34ch;text-align:center;color:var(--muted);font-size:14px;line-height:1.5}
+.bolha{max-width:min(82%,520px);display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:16px}
+.bolha p{margin:0;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.bolha.minha{align-self:flex-end;background:var(--accent-soft);border-bottom-right-radius:4px}
+.bolha.dele{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.chat.do-aluno .bolha.dele{background:var(--bg)}
+.chat-hora{align-self:flex-end;font-size:12px;color:var(--muted)}
+.chat-av{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none;min-height:44px}
+.chat-av strong{display:block;font-size:15px;font-weight:600}
+.chat-av .c-previa{display:block;font-size:13px}
+.chat-av-ic{width:40px;height:40px;flex:none;border-radius:10px;background:var(--surface);color:var(--accent-text);display:grid;place-items:center}
+.bolha.dele .chat-av-ic{background:var(--accent-soft)}
+.chat-anexos{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.chat-anexos .sub{flex-basis:100%;margin:0}
+.chat-pe{position:sticky;bottom:0;background:var(--surface);border-radius:0 0 var(--r) var(--r);z-index:2}
+body.com-nav .chat-pe{bottom:calc(76px + env(safe-area-inset-bottom))}
+.chat-pe>.msg{margin:0;padding:8px 14px 0}
+.chat-pe>.msg:empty{display:none}
+.chat-form{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r)}
+.chat-campo{flex:1;min-height:48px;max-height:140px;resize:none;padding:13px 16px;border:1px solid var(--line);border-radius:24px;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.35;font-family:inherit}
+.chat-anexo,.chat-enviar{width:48px;height:48px;flex:none;border:0;border-radius:999px;display:inline-grid;place-items:center}
+.chat-anexo{background:transparent;color:var(--muted)}
+.chat-anexo[aria-expanded="true"]{background:var(--accent-soft);color:var(--accent-text)}
+.chat-enviar{background:var(--accent);color:var(--accent-ink)}
+.chat-enviar:disabled{opacity:.5}
+@media (min-width:821px){body.com-nav .chat-pe{bottom:88px}}
+@media (max-width:600px){.chat{margin:0 -4px}.bolha{max-width:88%}}
+@media print{.chat-form,.chat-anexos{display:none}}

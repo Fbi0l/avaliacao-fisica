@@ -1,7 +1,8 @@
 // Regras puras do app.js: rotas, convite, inatividade e conversão do formulário da avaliação.
 const assert = require('node:assert/strict');
 const A = require('../app.js');
-const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-04' };
+const fs = require('node:fs'), path = require('node:path');
+const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-09' };
 
 assert.equal(A.TERMO_VERSAO, TERMO_VERSAO, 'mesma versão do termo que a função registrar-aluno');
 assert.equal(A.hojeISO(new Date(2026, 0, 5)), '2026-01-05');
@@ -258,4 +259,36 @@ assert.equal(A.avisoInstalacao({ ua: UA_PC }), null, 'computador: nada');
 assert.equal(A.avisoInstalacao({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/18.0 Safari/605.1.15', toques: 5 }), 'ios', 'iPad novo');
 for (const k of ['android', 'android-menu', 'ios']) assert.ok(A.TEXTO_INSTALAR[k]?.length > 20, k);
 for (const id of ['instalarAviso', 'instalarTexto', 'instalarBtn', 'instalarFechar']) assert.ok(htmlTut.includes(`id="${id}"`), `index.html tem #${id}`);
-console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação, aviso de medidas faltando, guia de primeiro acesso, aluno de exemplo e sugestão de instalar.');
+// 1.0.0: mensagens
+{
+  const id = '5f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
+  assert.deepEqual(A.lerRota('#conversa-' + id), { tela: 'conversa', id });
+  assert.deepEqual(A.lerRota('#mensagens'), { tela: 'mensagens' });
+  assert.deepEqual(A.lerRota('#conversa-123'), { tela: 'inicio' }, 'id inválido volta ao início');
+  assert.equal(A.limparMensagem('  oi  '), 'oi');
+  assert.equal(A.limparMensagem(' \n '), null);
+  assert.equal(A.limparMensagem(null), null);
+  const eu = 'p1', msgs = [
+    { aluno_id: 'a', autor: 'p1', texto: 'oi', criado_em: '2026-11-09T10:00:00Z', lida_em: null },
+    { aluno_id: 'a', autor: 'u1', texto: 'olá', criado_em: '2026-11-09T11:00:00Z', lida_em: null },
+    { aluno_id: 'a', autor: 'u1', texto: 'tudo bem?', criado_em: '2026-11-09T11:01:00Z', lida_em: null },
+    { aluno_id: 'b', autor: 'u2', texto: 'ok', criado_em: '2026-11-08T09:00:00Z', lida_em: '2026-11-08T10:00:00Z' }];
+  const r = A.resumoConversas(msgs, eu);
+  assert.equal(r.get('a').naoLidas, 2, 'as próprias mensagens não contam como não lidas');
+  assert.equal(r.get('a').ultima.texto, 'tudo bem?');
+  assert.equal(r.get('b').naoLidas, 0, 'lida não conta');
+  const agora = new Date(2026, 10, 9, 15, 0);
+  assert.equal(A.rotuloDia(new Date(2026, 10, 9, 8, 0).toISOString(), agora), 'Hoje');
+  assert.equal(A.rotuloDia(new Date(2026, 10, 8, 23, 59).toISOString(), agora), 'Ontem');
+  assert.match(A.rotuloDia(new Date(2026, 9, 14, 18, 0).toISOString(), agora), /14 de outubro/);
+  assert.match(A.rotuloDia(new Date(2025, 9, 14, 18, 0).toISOString(), agora), /2025/, 'outro ano mostra o ano');
+  assert.equal(A.quandoNaLista(new Date(2026, 10, 8, 9, 0).toISOString(), agora), 'Ontem');
+  assert.equal(A.quandoNaLista(new Date(2026, 9, 14, 9, 0).toISOString(), agora), '14/10');
+  assert.match(A.quandoNaLista(new Date(2026, 10, 9, 8, 5).toISOString(), agora), /08:05/);
+  assert.ok(A.MENSAGEM_MAX === 2000, 'mesmo limite do banco');
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', fs.readdirSync(path.join(__dirname, '..', 'supabase', 'migrations')).find(f => /_chat\.sql$/.test(f))), 'utf8');
+  assert.match(sql, /between 1 and 2000/, 'limite do texto igual ao do app');
+  assert.ok(A.PASSOS_TUTORIAL_PERSONAL.some(p => /Mensagens/.test(p.titulo)) && A.PASSOS_TUTORIAL_ALUNO.some(p => /Mensagens/.test(p.titulo)), 'guia explica as mensagens');
+}
+
+console.log('App aprovado: convite, inatividade, rotas, formulário da avaliação, aviso de medidas faltando, guia de primeiro acesso, aluno de exemplo, mensagens e sugestão de instalar.');
