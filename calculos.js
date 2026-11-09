@@ -3,7 +3,7 @@
    Referências: Lee et al. (2000) massa muscular; Faulkner (1968) e Petroski (1995) % de gordura; Ross e Wilson (1974)
    modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Karvonen (1957) zonas de FC; NSCA (Baechle e Earle, 2008) zonas de carga por % do 1RM;
    CSEP-PATH (2019) / ACSM flexão de braço; Pollock e Wilmore (1993) abdominal em 1 minuto; Cooper (1968) teste de 12 minutos e
-   Cooper Institute classificação do VO2máx; Araújo, Flexiteste (20 movimentos, notas de 0 a 4); Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
+   Cooper Institute classificação do VO2máx; Araújo, Flexiteste (20 movimentos, notas de 0 a 4); avaliação postural visual por vistas (Kendall et al.); Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
 'use strict';
 
 const PERIMETROS = [['bracoD', 'Braço D'], ['bracoE', 'Braço E'], ['antD', 'Antebraço D'], ['antE', 'Antebraço E'], ['torax', 'Tórax'], ['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['coxaSupD', 'Coxa superior D'], ['coxaSupE', 'Coxa superior E'], ['coxaMedD', 'Coxa média D'], ['coxaMedE', 'Coxa média E'], ['pantD', 'Panturrilha D'], ['pantE', 'Panturrilha E']];
@@ -232,6 +232,45 @@ function calcularTestes(testes, sexo, idade) {
   };
 }
 
+/* ---------- Avaliação postural (0.8.0) ---------- */
+/** Checklist visual por vista. Cada item: [chave, nome, [[valor, texto da alteração], …]]. Sem valor = sem alteração. */
+const POSTURA = [
+  ['Anterior', [
+    ['cabeca_lateral', 'Cabeça', [['direita', 'inclinada para a direita'], ['esquerda', 'inclinada para a esquerda']]],
+    ['ombros_nivel', 'Ombros', [['direito', 'ombro direito mais alto'], ['esquerdo', 'ombro esquerdo mais alto']]],
+    ['pelve_nivel', 'Pelve (cristas ilíacas)', [['direita', 'lado direito mais alto'], ['esquerda', 'lado esquerdo mais alto']]],
+    ['joelhos_frontal', 'Joelhos', [['valgo', 'valgo (para dentro)'], ['varo', 'varo (para fora)']]],
+    ['pes', 'Pés (arco plantar)', [['plano', 'pé plano'], ['cavo', 'pé cavo']]]
+  ]],
+  ['Lateral', [
+    ['cabeca_sagital', 'Cabeça', [['anteriorizada', 'anteriorizada (projetada à frente)']]],
+    ['ombros_sagital', 'Ombros', [['protusos', 'protusos (projetados à frente)']]],
+    ['toracica', 'Coluna torácica', [['hipercifose', 'hipercifose (curvatura aumentada)'], ['retificada', 'retificada (curvatura diminuída)']]],
+    ['lombar', 'Coluna lombar', [['hiperlordose', 'hiperlordose (curvatura aumentada)'], ['retificada', 'retificada (curvatura diminuída)']]],
+    ['pelve_sagital', 'Pelve', [['anteversao', 'anteversão'], ['retroversao', 'retroversão']]],
+    ['joelhos_sagital', 'Joelhos', [['hiperextensao', 'hiperestendidos (recurvato)'], ['semiflexao', 'em semiflexão']]],
+    ['abdome', 'Abdômen', [['protuso', 'protuso']]]
+  ]],
+  ['Posterior', [
+    ['escapulas', 'Escápulas', [['aladas', 'aladas (descoladas das costas)']]],
+    ['coluna_lateral', 'Coluna', [['direita', 'desvio para a direita (sinal de escoliose)'], ['esquerda', 'desvio para a esquerda (sinal de escoliose)']]],
+    ['calcaneos', 'Calcanhares', [['valgo', 'valgo (para dentro)'], ['varo', 'varo (para fora)']]]
+  ]]
+];
+const POSTURA_OBS_MAX = 1000;
+/** Alterações encontradas, na ordem do checklist: [{ vista, chave, nome, texto }]. Valores fora da lista são ignorados. */
+function alteracoesPosturais(postura) {
+  const itens = postura && typeof postura === 'object' && postura.itens && typeof postura.itens === 'object' ? postura.itens : {};
+  const lista = [];
+  for (const [vista, grupo] of POSTURA) for (const [chave, nome, opcoes] of grupo) {
+    const o = opcoes.find(([v]) => v === itens[chave]);
+    if (o) lista.push({ vista, chave, nome, texto: o[1] });
+  }
+  return lista;
+}
+/** A postura foi avaliada? (o personal marcou, mesmo sem nenhuma alteração) */
+const posturaAvaliada = postura => !!(postura && typeof postura === 'object' && postura.itens && typeof postura.itens === 'object');
+
 /** Outros exercícios do teste de força, escolhidos pelo personal: sem tabela de classificação, só 1RM e 1RM ÷ peso. */
 const MAX_OUTROS_EXERCICIOS = 8;
 const SUGESTOES_EXERCICIOS = ['Agachamento livre', 'Remada curvada', 'Puxada frontal', 'Desenvolvimento', 'Rosca direta', 'Tríceps testa',
@@ -341,11 +380,12 @@ function calcular(aluno, av) {
     exercicios1RM: [['Supino reto', sup], ['Leg press', leg], ...outros.map(o => [o.nome, o.rm])].filter(([, rm]) => ok(rm)).map(([nome, rm]) => ({ nome, rm })),
     zonasFC: zonasFC(fcMaxima, ok(av.fc_repouso) ? Number(av.fc_repouso) : null),
     testes: calcularTestes(av.testes, aluno.sexo, idade),
+    posturaAvaliada: posturaAvaliada(av.postura), alteracoesPosturais: alteracoesPosturais(av.postura), obsPostura: av.postura?.obs || null,
     zPerimetros, zDobras
   };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { FLEXAO, ABDOMINAL, VO2, FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, classeFlexao, classeAbdominal, vo2Cooper, classeVO2, ritmo, paceTexto, calcularTestes, ZONAS_FC, ZONAS_CARGA, zonasFC, zonaCarga, cargasPorZona, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
+  module.exports = { POSTURA, POSTURA_OBS_MAX, alteracoesPosturais, posturaAvaliada, FLEXAO, ABDOMINAL, VO2, FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, classeFlexao, classeAbdominal, vo2Cooper, classeVO2, ritmo, paceTexto, calcularTestes, ZONAS_FC, ZONAS_CARGA, zonasFC, zonaCarga, cargasPorZona, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
     classeMassaMuscular, classeGordura, gorduraFaulkner, gorduraPetroski, EQUACOES_GORDURA, equacaoDe, massaMuscularLee, umRM, classeSupino, classeLegPress, classePressao, classeExame, calcular };
 }

@@ -53,7 +53,7 @@ let { registro, erros } = A.montarAvaliacao(r, '2026-11-04');
 assert.deepEqual(erros, []);
 assert.deepEqual(registro, {
   data: '2026-10-14', peso: 63.8, altura: 1.65, fc_repouso: 66, pas: 116, pad: 76, glicose: 89, triglicerideos: null, ldl: null, hdl: null,
-  perimetros: { bracoD: 29, cintura: 71 }, equacao_gordura: 'faulkner', dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, testes: {}, parecer: 'Boa evolução.'
+  perimetros: { bracoD: 29, cintura: 71 }, equacao_gordura: 'faulkner', dobras: { triceps: [22, 22.4], subesc: [19] }, forca: { supino: { carga: 38, reps: 8 } }, testes: {}, postura: {}, parecer: 'Boa evolução.'
 });
 // Altura digitada em centímetros vira metros
 assert.equal(A.montarAvaliacao({ ...A.rascunhoVazio('2026-10-14'), peso: '70', altura: '172' }, '2026-11-04').registro.altura, 1.72);
@@ -124,14 +124,36 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.deepEqual(ex.map(v => v.testes.flexao), [12, 16, 21], 'aluna de exemplo com testes');
 }
 
+// Avaliação postural (0.8.0)
+{
+  const base = { ...A.rascunhoVazio('2026-10-14', 1.7), peso: '70' };
+  assert.deepEqual(A.montarAvaliacao(base, '2026-11-04').registro.postura, {}, 'não feita');
+  const sem = A.montarAvaliacao({ ...base, postura: { feita: true, itens: {}, obs: '  ' } }, '2026-11-04').registro.postura;
+  assert.deepEqual(sem, { itens: {} }, 'feita, sem alterações');
+  const com = A.montarAvaliacao({ ...base, postura: { feita: true, itens: { lombar: 'hiperlordose', pes: 'quadrado', inventado: 'x' }, obs: ' Ver joelho. ' } }, '2026-11-04');
+  assert.deepEqual(com.registro.postura, { itens: { lombar: 'hiperlordose' }, obs: 'Ver joelho.' }, 'valor ou item fora da lista some');
+  assert.deepEqual(A.montarAvaliacao({ ...base, postura: { feita: false, itens: { lombar: 'hiperlordose' } } }, '2026-11-04').registro.postura, {}, 'desmarcou: não salva');
+  const e = A.montarAvaliacao({ ...base, postura: { feita: true, itens: {}, obs: 'x'.repeat(1001) } }, '2026-11-04').erros;
+  assert.ok(e.some(m => /1000/.test(m)), e);
+  const volta = A.montarAvaliacao(A.rascunhoDe({ ...com.registro, data: '2026-10-14', peso: 70, altura: 1.7 }), '2026-11-04');
+  assert.deepEqual(volta.registro.postura, com.registro.postura, 'editar ida e volta');
+  assert.equal(A.rascunhoDe({ data: '2026-10-14', peso: 70, altura: 1.7 }).postura.feita, false, 'avaliação antiga sem postura');
+  // O banco aceita exatamente as mesmas chaves e valores do checklist
+  const sql = require('fs').readFileSync(require('path').join(__dirname, '..', 'supabase', 'migrations', require('fs').readdirSync(require('path').join(__dirname, '..', 'supabase', 'migrations')).find(f => f.endsWith('_avaliacao_postural.sql'))), 'utf8');
+  const doBanco = JSON.parse(sql.match(/permitidos constant jsonb := '([^']+)'/)[1]);
+  const doApp = Object.fromEntries(require('../calculos.js').POSTURA.flatMap(([, g]) => g.map(([k, , o]) => [k, o.map(x => x[0])])));
+  assert.deepEqual(doBanco, doApp, 'checklist do app igual ao do banco');
+  assert.ok(A.avaliacoesExemplo('x')[0].postura.itens.lombar, 'aluna de exemplo com postura');
+}
+
 // Guia de uso revisado a cada versão (pedido do dono em 09/11/2026)
 {
   const versao = require('../package.json').version;
   assert.equal(A.GUIA_REVISADO_NA_VERSAO, versao, `Versão ${versao}: revise o guia de primeiro acesso (PASSOS_TUTORIAL_*) e suba GUIA_REVISADO_NA_VERSAO no app.js.`);
   const textoGuia = passos => passos.map(p => [p.titulo, p.texto, ...p.itens].join(' ')).join(' ').toLowerCase();
   const personal = textoGuia(A.PASSOS_TUTORIAL_PERSONAL), aluno = textoGuia(A.PASSOS_TUTORIAL_ALUNO);
-  for (const t of ['outro exercício', 'zonas de treino', '7 etapas', 'flexiteste', 'cooper']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
-  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas'); assert.ok(aluno.includes('testes físicos'), 'guia do aluno sem os testes');
+  for (const t of ['outro exercício', 'zonas de treino', '8 etapas', 'flexiteste', 'cooper', 'postura']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
+  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas'); assert.ok(aluno.includes('testes físicos'), 'guia do aluno sem os testes'); assert.ok(aluno.includes('postural'), 'guia do aluno sem a postura');
   assert.ok(!personal.includes('etnia'), 'guia ainda fala de etnia');
 }
 

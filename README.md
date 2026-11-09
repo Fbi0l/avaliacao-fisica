@@ -2,6 +2,17 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.8.0 — Avaliação postural
+
+- Nova etapa **Postura** na avaliação (agora são 8 etapas), opcional: o personal marca "Fiz a avaliação postural" e preenche um checklist visual por vista, com observações.
+  - **Anterior**: cabeça inclinada, ombros e pelve desnivelados, joelhos valgo ou varo, pé plano ou cavo.
+  - **Lateral**: cabeça e ombros projetados à frente, hipercifose ou coluna torácica retificada, hiperlordose ou lombar retificada, pelve em anteversão ou retroversão, joelhos hiperestendidos ou em semiflexão, abdômen protuso.
+  - **Posterior**: escápulas aladas, desvio lateral da coluna (sinal de escoliose), calcanhares valgo ou varo.
+- O resultado mostra as alterações por vista (ou "Nenhuma alteração observada") e as observações, com o aviso de que é uma triagem visual e de quando encaminhar a um fisioterapeuta ou médico. Aparece também no painel do aluno (avaliação postural mais recente) e na comparação (número de alterações).
+- Checklist baseado na avaliação postural visual por vistas (Kendall et al.), a ajustar com o professor se ele quiser. Sem fotos por enquanto.
+- A aluna de exemplo ganhou a postura na 1ª e na 3ª avaliação. Guia de uso atualizado.
+- Banco: coluna `postura` em `avaliacoes`, conferida por `privado.postura_valida` (migração `avaliacao_postural`).
+
 ## Versão 0.7.1 — Correção
 
 - Seções vazias (por exemplo, uma avaliação sem testes físicos) apareciam como a palavra "null" no meio da tela. Agora simplesmente não aparecem. Valia para o resultado da avaliação, a ficha do aluno e o painel do aluno.
@@ -73,7 +84,7 @@ App para o personal trainer registrar avaliações físicas, acompanhar a evolu�
 ## Versão 0.1.0 — Etapa 1: avaliação e evolução
 
 - **Alunos:** cadastro com sexo e nascimento, busca e edição.
-- **Nova avaliação em 7 etapas** (básico, exames, perímetros, dobras, força, testes, parecer), com gordura e massa muscular calculadas enquanto se preenche. Altura aceita em metros ou centímetros; dobras com até duas medidas e média automática.
+- **Nova avaliação em 8 etapas** (básico, exames, perímetros, dobras, força, testes, postura, parecer), com gordura e massa muscular calculadas enquanto se preenche. Altura aceita em metros ou centímetros; dobras com até duas medidas e média automática.
 - **Resultado completo:** gordura (Faulkner), massa muscular (Lee et al., 2000), massa gorda e magra em kg, somatórios de dobras, proporcionalidade (Phantom) em régua neutra, 1RM (Epley) com força relativa no supino, FC máxima e de reserva, pressão arterial classificada pela Diretriz Brasileira de 2020 e exames com referência. Botão para imprimir ou salvar em PDF.
 - **Evolução** em gráficos (peso, gordura, massa muscular, soma de dobras, cintura e 1RM) e **comparação** entre quaisquer duas avaliações.
 - **Acesso do aluno por convite:** link de uso único, válido por 7 dias. O aluno aceita o termo de uso dos dados de saúde (LGPD), cria a senha e passa a ver só os próprios resultados, em linguagem simples, com o recado do personal.

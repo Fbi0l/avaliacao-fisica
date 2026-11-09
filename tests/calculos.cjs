@@ -220,4 +220,15 @@ for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for
   const vazio = C.calcularTestes(undefined, 'M', 30);
   assert.equal(vazio.flexao, null); assert.equal(vazio.aerobico, null); assert.deepEqual(vazio.flexiteste, []);
 }
-console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, testes físicos (flexão, abdominal, Cooper, flexiteste), faixas de gordura, pressão e exames.');
+// Avaliação postural
+{
+  assert.equal(C.POSTURA.length, 3); assert.equal(C.POSTURA.flatMap(([, g]) => g).length, 15, '15 itens');
+  const chaves = C.POSTURA.flatMap(([, g]) => g.map(([k]) => k)); assert.equal(new Set(chaves).size, chaves.length, 'chaves sem repetir');
+  assert.equal(C.posturaAvaliada({}), false); assert.equal(C.posturaAvaliada(undefined), false); assert.equal(C.posturaAvaliada({ itens: {} }), true);
+  const alt = C.alteracoesPosturais({ itens: { calcaneos: 'varo', cabeca_lateral: 'direita', lombar: 'inventado' } });
+  assert.deepEqual(alt.map(a => [a.vista, a.chave]), [['Anterior', 'cabeca_lateral'], ['Posterior', 'calcaneos']], 'na ordem do checklist; valor desconhecido some');
+  const rp = C.calcular(aluna, { ...av, postura: { itens: {}, obs: 'ok' } });
+  assert.equal(rp.posturaAvaliada, true); assert.deepEqual(rp.alteracoesPosturais, []); assert.equal(rp.obsPostura, 'ok');
+  assert.equal(C.calcular(aluna, av).posturaAvaliada, false, 'avaliação antiga');
+}
+console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, testes físicos (flexão, abdominal, Cooper, flexiteste), avaliação postural, faixas de gordura, pressão e exames.');

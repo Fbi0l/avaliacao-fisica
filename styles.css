@@ -308,3 +308,11 @@ body.com-instalar{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
 .notas>span{width:12px;height:12px;border-radius:3px;background:var(--surface-2);border:1px solid var(--line)}
 .notas>span.cheia{background:var(--accent);border-color:var(--accent)}
 .notas>b{margin-left:6px;font-size:13px}
+
+/* Avaliação postural (0.8.0) */
+.postura-vistas{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 20px;margin-bottom:10px}
+.postura-vistas>div{display:grid;gap:6px;align-content:start}
+.lista-postura{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.postura-item{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
+.postura-item select{width:100%}
+label.check input{width:20px;height:20px;accent-color:var(--accent)}

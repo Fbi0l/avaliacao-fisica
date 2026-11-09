@@ -68,6 +68,16 @@ for ruim in '{"flexao":2.5}' '{"abdominal":200}' '{"flexao":"20"}' '{"aerobico":
   recusa "recusa testes $ruim" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, testes) values ('$ALUNA',60,1.6,'$ruim') returning id")"
 done
 q -d $B -c "delete from public.avaliacoes where testes <> '{}'" # não contam nas próximas verificações
+# 0.8.0: avaliação postural
+P1J='{"itens":{"lombar":"hiperlordose","joelhos_frontal":"valgo"},"obs":"Ver joelho."}'
+confere "aceita avaliação postural" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, postura) values ('$ALUNA',60,1.6,'$P1J') returning postura->'itens'->>'lombar'")" "hiperlordose"
+confere "aceita postura sem alterações" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, postura) values ('$ALUNA',60,1.6,'{\"itens\":{}}') returning postura::text")" '{"itens": {}}'
+confere "personal edita a postura" "$(como authenticated $P1 "update public.avaliacoes set postura = '{\"itens\":{\"pes\":\"cavo\"}}' where postura ? 'obs' returning postura->'itens'->>'pes'")" "cavo"
+for ruim in '{"itens":{"lombar":"torta"}}' '{"itens":{"nariz":"torto"}}' '{"itens":{"lombar":1}}' '{"itens":[]}' '{"obs":"sem itens"}' '{"itens":{},"obs":""}' '{"itens":{},"x":1}' '"texto"'; do
+  recusa "recusa postura $ruim" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, postura) values ('$ALUNA',60,1.6,'$ruim') returning id")"
+done
+recusa "recusa observação longa" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, postura) values ('$ALUNA',60,1.6,jsonb_build_object('itens','{}'::jsonb,'obs',repeat('x',1001))) returning id")"
+q -d $B -c "delete from public.avaliacoes where postura <> '{}'"
 recusa "peso absurdo é recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura) values ('$ALUNA',600,1.6) returning id")"
 confere "avaliação antiga fica com Faulkner" "$(q -d $B -c "select equacao_gordura from public.avaliacoes where id='$AVAL'")" "faulkner"
 confere "personal troca a equação para Petroski" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='petroski' where id='$AVAL' returning equacao_gordura")" "petroski"
