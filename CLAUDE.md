@@ -28,6 +28,7 @@ Nome do app provisório. Identidade visual e design definitivos ficam para depoi
 - Nada de HTML montado a partir de dados (`innerHTML` etc.): use `h()` / `textContent`. CSP sem `unsafe-inline`; script externo com versão exata e `integrity`.
 - Dados de saúde (LGPD): aceite do termo registrado (`consentimentos`, com versão); exclusão completa pelo `excluir_aluno`. Mudou o termo? Suba `TERMO_VERSAO` no `app.js` E na função `registrar-aluno` (teste confere).
 - Campos de texto com fonte de 16px no celular.
+- Guia de uso (tutorial de primeiro acesso, `PASSOS_TUTORIAL_PERSONAL` e `PASSOS_TUTORIAL_ALUNO` no `app.js`): SEMPRE atualizar junto com qualquer mudança de tela, fluxo ou recurso (pedido do dono em 09/11/2026). A cada versão, revisar os passos e subir `GUIA_REVISADO_NA_VERSAO`; o teste recusa versão nova sem isso.
 
 ## Pendências e decisões em aberto
 

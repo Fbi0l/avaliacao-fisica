@@ -7,7 +7,8 @@ App para o personal trainer registrar avaliações físicas, acompanhar a evolu�
 - Nova seção **Zonas de treino** no resultado de cada avaliação (personal) e no painel do aluno.
 - **Frequência cardíaca**: 5 zonas (recuperação, aeróbico leve, aeróbico moderado, limiar e máximo) em batimentos por minuto. Com a FC de repouso, pela FC de reserva (Karvonen) com a FC máxima de Tanaka; sem ela, pela % da FC máxima. No painel do aluno vale a avaliação mais recente com FC de repouso.
 - **Carga**: para cada exercício com 1RM (supino, leg press e os outros), as faixas em kg de resistência muscular (abaixo de 67%), hipertrofia (67% a 85%) e força (85% para cima), pela NSCA. Uma **calculadora** mostra em que zona está a carga usada no treino (por exemplo, 30 kg no supino = 62% do 1RM, resistência). No painel do aluno, vale o 1RM mais recente de cada exercício.
-- Faixas usuais, a revisar com o professor. O guia de primeiro acesso (personal e aluno) fala das zonas. Sem mudança no banco.
+- Faixas usuais, a revisar com o professor. O guia de primeiro acesso (personal e aluno) fala das zonas e do “+ Outro exercício”. Sem mudança no banco.
+- O guia de uso passa a ser revisado a cada versão: o teste recusa publicar uma versão nova sem essa revisão.
 
 ## Versão 0.5.0 — Sugestões do professor (parte 1)
 

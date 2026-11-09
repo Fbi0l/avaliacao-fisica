@@ -179,6 +179,9 @@ function faltasDoCalculo(av) {
 const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`;
 
 /* ---------- Tutorial de primeiro acesso ---------- */
+// Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
+// O teste tests/app.cjs recusa publicar com o guia sem revisão.
+const GUIA_REVISADO_NA_VERSAO = '0.6.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -188,7 +191,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['“+ Novo” cadastra um aluno: nome, sexo e data de nascimento.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
   { icone: '＋', titulo: '2. Nova avaliação em 6 etapas',
     texto: 'Básico, exames, perímetros, dobras, força e parecer. Só peso e altura são obrigatórios.',
-    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).'] },
+    itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.'] },
   { icone: '▤', titulo: '3. O resultado completo',
     texto: 'Cada avaliação vira uma ficha com tudo calculado.',
     itens: ['Gordura, massa muscular, massa gorda e magra, soma das dobras.', 'Perímetros e dobras com a régua de proporção (modelo Phantom).', 'Força (1RM) com classificação, coração, exames e o seu parecer. “Imprimir / PDF” gera o relatório.', 'Zonas de treino: faixas de frequência cardíaca e de carga (% do 1RM), com uma calculadora de carga.'] },
@@ -271,7 +274,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
+  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, sentido };
 } else {
   iniciar();
 }

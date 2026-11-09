@@ -103,6 +103,17 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.equal(A.zonasDoAluno(al, [avs[1]]).fc.metodo, 'fcmax', 'sem nenhuma FC de repouso');
 }
 
+// Guia de uso revisado a cada versão (pedido do dono em 09/11/2026)
+{
+  const versao = require('../package.json').version;
+  assert.equal(A.GUIA_REVISADO_NA_VERSAO, versao, `Versão ${versao}: revise o guia de primeiro acesso (PASSOS_TUTORIAL_*) e suba GUIA_REVISADO_NA_VERSAO no app.js.`);
+  const textoGuia = passos => passos.map(p => [p.titulo, p.texto, ...p.itens].join(' ')).join(' ').toLowerCase();
+  const personal = textoGuia(A.PASSOS_TUTORIAL_PERSONAL), aluno = textoGuia(A.PASSOS_TUTORIAL_ALUNO);
+  for (const t of ['outro exercício', 'zonas de treino']) assert.ok(personal.includes(t), `guia do personal sem: ${t}`);
+  assert.ok(aluno.includes('zonas'), 'guia do aluno sem as zonas');
+  assert.ok(!personal.includes('etnia'), 'guia ainda fala de etnia');
+}
+
 // Editar: rascunho a partir do salvo e de volta dá o mesmo registro
 const ida = A.montarAvaliacao(A.rascunhoDe({ ...registro }), '2026-11-04');
 assert.deepEqual(ida.erros, []); assert.deepEqual(ida.registro, registro);
