@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.7.1 — Correção
+
+- Seções vazias (por exemplo, uma avaliação sem testes físicos) apareciam como a palavra "null" no meio da tela. Agora simplesmente não aparecem. Valia para o resultado da avaliação, a ficha do aluno e o painel do aluno.
+- Guia de uso revisado: nada muda para quem usa.
+
 ## Versão 0.7.0 — Testes físicos
 
 - Nova etapa **Testes** na avaliação (agora são 7 etapas), toda opcional:

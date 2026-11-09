@@ -225,7 +225,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '0.7.0';
+const GUIA_REVISADO_NA_VERSAO = '0.7.1';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -344,6 +344,8 @@ function iniciar() {
   }
   const NS = 'http://www.w3.org/2000/svg';
   function s(tag, attrs, ...filhos) { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); filhos.flat(Infinity).forEach(f => f != null && e.append(f instanceof Node ? f : String(f))); return e; }
+  /** Só os elementos de verdade: partes opcionais da tela (null, undefined, false) somem em vez de virar texto. */
+  const soElementos = itens => [itens].flat(Infinity).filter(x => x != null && x !== false && x !== true);
   const chip = c => c ? h('span', { class: 'chip ' + (c.tom || '') }, c.texto) : h('span', { class: 'chip' }, '—');
   const dataBR = iso => { const [a, m, d] = String(iso).split('-').map(Number); return new Date(a, m - 1, d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', ''); };
   const dataCurta = iso => { const [, m, d] = String(iso).split('-'); return `${d}/${m}`; };
@@ -418,13 +420,13 @@ function iniciar() {
     const p = $('principal');
     $('areaPersonal').classList.toggle('com-foco', r.tela !== 'inicio'); // no celular, esconde a lista de alunos
     try {
-      if (r.tela === 'aluno' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...await telaAluno(alunoPorId(r.id), r.aba)); }
+      if (r.tela === 'aluno' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(await telaAluno(alunoPorId(r.id), r.aba))); }
       else if (r.tela === 'avaliacao' || r.tela === 'editar') {
         const av = await acharAvaliacao(r.id);
         if (!av) return ir('inicio');
         desenharLista(av.aluno_id);
-        p.replaceChildren(...(r.tela === 'avaliacao' ? telaResultado(alunoPorId(av.aluno_id), av) : telaFormulario(alunoPorId(av.aluno_id), av)));
-      } else if (r.tela === 'nova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...telaFormulario(alunoPorId(r.id), null)); }
+        p.replaceChildren(...soElementos(r.tela === 'avaliacao' ? telaResultado(alunoPorId(av.aluno_id), av) : telaFormulario(alunoPorId(av.aluno_id), av)));
+      } else if (r.tela === 'nova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(telaFormulario(alunoPorId(r.id), null))); }
       else {
         desenharLista(null);
         p.replaceChildren(h('section', { class: 'card' }, h('h2', null, est.alunos.length ? 'Escolha um aluno' : 'Bem-vindo!'),
@@ -956,7 +958,7 @@ function iniciar() {
     const delta = (dif, un, d) => !varias || !Number.isFinite(dif) ? null : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '▲ +' : dif < 0 ? '▼ ' : ''}${fmt(dif)} ${un} desde ${dataCurta(pri.data)}`);
     const kpi = (k, valor, un, ...extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, fmt(valor), valor == null ? null : h('small', null, un)), ...extra);
     const frase = (nome, dif, un, d, sobe, desce) => !Number.isFinite(dif) ? null : h('li', null, Math.abs(dif) < 0.05 ? `${nome} se manteve estável.` : `${nome} ${dif > 0 ? sobe : desce} ${fmt(Math.abs(dif))} ${un}${sentido(dif, d) === 'bom' ? ' — ótimo sinal.' : '.'}`);
-    area.replaceChildren(
+    area.replaceChildren(...soElementos(
       h('section', { class: 'card ola' }, h('p', { class: 'sub' }, 'Olá,'), h('h2', null, `${primeiro(eu.nome)}, aqui está sua evolução`), h('p', { class: 'sub' }, `Última avaliação em ${dataBR(ult.data)} · ${avs.length} ${avs.length === 1 ? 'avaliação' : 'avaliações'} com ${personal}`)),
       h('div', { class: 'grandes' },
         kpi('Gordura corporal', c.gordura, '%', delta(c.gordura - c0.gordura, 'pontos', -1), c.classeGordura ? chip(c.classeGordura) : null),
@@ -973,7 +975,7 @@ function iniciar() {
       (v => v && cardTestes(K.calcular(eu, v).testes))([...avs].reverse().find(v => v.testes && Object.keys(v.testes).length)),
       (z => z && secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }))(zonasDoAluno(eu, avs)),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
-      h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`));
+      h('p', { class: 'aviso' }, `Você só vê os seus dados. Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com ${personal}.`)));
   }
 
   /* ----- Guia de primeiro acesso e aluno de exemplo ----- */
