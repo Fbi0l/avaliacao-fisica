@@ -205,12 +205,31 @@ confere "outro personal não vê os treinos feitos" "$(como authenticated $P2 "s
 recusa "visitante sem login não lê fichas" "$(q -d $B -c "begin; set local role anon; select count(*) from public.fichas; commit;" 2>&1 | tail -1)"
 confere "personal encerra a ficha e monta outra" "$(como authenticated $P1 "update public.fichas set encerrada_em = current_date where id = '$FI'; insert into public.fichas (aluno_id, divisao, treinos) values ('$ALUNA','corpo','[{\"nome\":\"Corpo inteiro\",\"exercicios\":[]}]') returning divisao")" "corpo"
 confere "histórico guarda a ficha anterior" "$(como authenticated $AL "select count(*) from public.fichas")" "2"
+# 1.2.0: periodização por blocos
+BL='[{"nome":"Adaptação","objetivo":"resistencia","semanas":4},{"nome":"Hipertrofia","objetivo":"hipertrofia","semanas":6,"obs":"8 a 12 reps"},{"nome":"Força","objetivo":"forca","semanas":4}]'
+CI="$(como authenticated $P1 "insert into public.ciclos (aluno_id, nome, meta, blocos) values ('$ALUNA','Ciclo de 14 semanas','Hipertrofia com ganho de força','$BL') returning id")"
+[[ "$CI" =~ ^[0-9a-f-]{36}$ ]] && ok "personal planeja a periodização" || erro "planejar periodização" "$CI"
+recusa "só um ciclo ativo por aluno" "$(como authenticated $P1 "insert into public.ciclos (aluno_id, blocos) values ('$ALUNA','$BL') returning id")"
+recusa "bloco com objetivo desconhecido é recusado" "$(como authenticated $P1 "update public.ciclos set blocos = '[{\"nome\":\"X\",\"objetivo\":\"magia\",\"semanas\":4}]' where id = '$CI' returning id")"
+recusa "bloco sem semanas é recusado" "$(como authenticated $P1 "update public.ciclos set blocos = '[{\"nome\":\"X\",\"objetivo\":\"forca\"}]' where id = '$CI' returning id")"
+FA="$(q -d $B -c "select id from public.fichas where aluno_id = '$ALUNA' and encerrada_em is null")"
+confere "ficha ativa entra no bloco 2 do ciclo" "$(como authenticated $P1 "update public.fichas set ciclo_id = '$CI', bloco = 1 where id = '$FA' returning bloco")" "1"
+confere "bloco sem ciclo não fica gravado" "$(como authenticated $P1 "with x as (update public.fichas set ciclo_id = null, bloco = 2 where id = '$FA' returning bloco) select coalesce(bloco::text, 'vazio') from x")" "vazio"
+como authenticated $P1 "update public.fichas set ciclo_id = '$CI', bloco = 1 where id = '$FA' returning id" >/dev/null
+recusa "ficha de outro aluno não entra no ciclo da aluna" "$(como authenticated $P1 "insert into public.fichas (aluno_id, treinos, ciclo_id, bloco) values ('$EX','[{\"nome\":\"A\",\"exercicios\":[]}]','$CI',0) returning id")"
+confere "aluna vê a própria periodização" "$(como authenticated $AL "select count(*) from public.ciclos")" "1"
+confere "aluna não altera a periodização" "$(como authenticated $AL "with x as (update public.ciclos set nome = 'x' returning 1) select count(*) from x")" "0"
+recusa "aluna não cria periodização" "$(como authenticated $AL "insert into public.ciclos (aluno_id, personal_id, blocos) values ('$ALUNA','$P1','$BL') returning id")"
+confere "outro personal não vê a periodização" "$(como authenticated $P2 "select count(*) from public.ciclos")" "0"
+confere "apagar a periodização só solta a ficha" "$(como authenticated $P1 "delete from public.ciclos where id = '$CI'; select (ciclo_id is null and bloco is null)::text from public.fichas where id = '$FA'")" "true"
+CI="$(como authenticated $P1 "insert into public.ciclos (aluno_id, blocos) values ('$ALUNA','$BL') returning id")"
 confere "aluno comum começa sem a marca de exemplo" "$(q -d $B -c "select exemplo from public.alunos where id = '$ALUNA'")" "f"
 confere "personal apaga o aluno de exemplo" "$(como authenticated $P1 "select public.excluir_aluno('$EX')")" "t"
 
 # Exclusão (LGPD): some tudo, inclusive o login da aluna; o personal continua.
 confere "personal apaga a aluna" "$(como authenticated $P1 "select public.excluir_aluno('$ALUNA')")" "t"
 confere "avaliações apagadas junto" "$(q -d $B -c 'select count(*) from public.avaliacoes')" "0"
+confere "periodização apagada junto" "$(q -d $B -c 'select count(*) from public.ciclos')" "0"
 confere "fichas e treinos feitos apagados junto" "$(q -d $B -c 'select (select count(*) from public.fichas) + (select count(*) from public.treinos_feitos)')" "0"
 confere "mensagens apagadas junto" "$(q -d $B -c 'select count(*) from public.mensagens')" "0"
 confere "consentimento apagado junto" "$(q -d $B -c 'select count(*) from public.consentimentos')" "0"

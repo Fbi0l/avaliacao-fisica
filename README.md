@@ -2,6 +2,14 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.2.0 — Periodização por blocos
+
+- **Periodização (opcional)** na aba Treino do aluno: "Planejar" divide o treino em blocos (mesociclos) com nome, objetivo, semanas e observação. Começa de um modelo (hipertrofia com força 16 semanas, força 12, emagrecimento 12, saúde 12) ou do zero, com até 12 blocos.
+- O app mostra a faixa do ciclo, em que bloco e semana o aluno está e as datas de cada bloco. Em cada bloco, "Montar ficha" já traz o objetivo, as semanas, o início do bloco e as repetições do objetivo, copiando os exercícios da ficha atual; o app avisa quando um bloco começou sem ficha.
+- O aluno vê no topo do Treino em que bloco e semana está.
+- Quem não quiser periodizar continua só com a ficha simples.
+- Banco: tabela `ciclos` e ligação da ficha ao bloco (migração `periodizacao`), com as mesmas regras de acesso das fichas. Guia de uso atualizado.
+
 ## Versão 1.1.0 — Fichas de treino
 
 - **Personal:** nova aba **Treino** na ficha do aluno. "+ Montar ficha": objetivo (hipertrofia, força, emagrecimento, resistência, saúde), início, duração em semanas, treinos por semana e a **divisão livre**: corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, ABCD/ABCDE, por dia da semana ou personalizada, com os nomes que quiser e até 10 treinos.

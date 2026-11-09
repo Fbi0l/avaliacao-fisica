@@ -267,6 +267,8 @@ for (const id of ['instalarAviso', 'instalarTexto', 'instalarBtn', 'instalarFech
   assert.deepEqual(A.lerRota('#ficha-' + id), { tela: 'ficha', id });
   assert.deepEqual(A.lerRota('#treino'), { tela: 'treino' });
   assert.deepEqual(A.lerRota('#ficha-xyz'), { tela: 'inicio' });
+  assert.deepEqual(A.lerRota('#ciclo-nova-' + id), { tela: 'cicloNovo', id });
+  assert.deepEqual(A.lerRota('#ciclo-' + id), { tela: 'ciclo', id });
   assert.ok(A.PASSOS_TUTORIAL_PERSONAL.some(p => /Fichas de treino/.test(p.titulo)) && A.PASSOS_TUTORIAL_ALUNO.some(p => p.titulo === 'Treino'), 'guia explica as fichas');
 }
 

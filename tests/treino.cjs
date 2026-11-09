@@ -89,4 +89,27 @@ assert.equal(new Set(T.EXERCICIOS.map(e => e.nome)).size, T.EXERCICIOS.length, '
   assert.equal(T.prescricao({ series: 4, reps: '8–10', carga: 27.5, descanso: 90 }), '4 × 8–10 · 27,5 kg · 90 s');
   assert.equal(T.prescricao({ reps: '12', descanso: 120 }), '12 · 2 min');
 }
-console.log('Treino aprovado: divisão livre, ficha conferida, chaves iguais às do banco, treino sugerido, frequência, cargas e 1RM.');
+// Periodização por blocos
+{
+  const sqlP = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', fs.readdirSync(path.join(__dirname, '..', 'supabase', 'migrations')).find(f => /_periodizacao\.sql$/.test(f))), 'utf8');
+  assert.deepEqual((sqlP.match(/\(x->>'objetivo'\) not in \(([^)]+)\)/) || [])[1].split(',').map(x => x.trim().replace(/'/g, '')).sort(), Object.keys(T.OBJETIVOS).sort(), 'objetivos dos blocos iguais aos do banco');
+  for (const k of Object.keys(T.MODELOS_CICLO)) assert.ok(T.montarCiclo({ ...T.rascunhoDoCiclo(null, '2026-11-09'), blocos: T.blocosDoModelo(k) }).dados, `modelo ${k} é válido`);
+  const r = T.rascunhoDoCiclo(null, '2026-11-02');
+  const c = T.montarCiclo(r).dados;
+  assert.equal(T.totalSemanas(c), 16);
+  assert.deepEqual(T.datasDosBlocos(c).map(d => [d.inicio, d.fim]), [['2026-11-02', '2026-11-29'], ['2026-11-30', '2027-01-10'], ['2027-01-11', '2027-02-07'], ['2027-02-08', '2027-02-21']]);
+  assert.equal(T.blocoAtual(c, '2026-11-01').antes, true);
+  assert.deepEqual([T.blocoAtual(c, '2026-11-09').indice, T.blocoAtual(c, '2026-11-09').semana], [0, 2]);
+  assert.deepEqual([T.blocoAtual(c, '2026-11-30').indice, T.blocoAtual(c, '2026-11-30').semana], [1, 1], 'o dia seguinte ao fim do bloco já é o próximo');
+  assert.deepEqual([T.blocoAtual(c, '2027-01-10').indice, T.blocoAtual(c, '2027-01-10').semana], [1, 6]);
+  assert.equal(T.blocoAtual(c, '2027-03-01').depois, true);
+  const mau = (mudar, re) => { const x = structuredClone(r); mudar(x); assert.match(T.montarCiclo(x).erro || '', re); };
+  mau(x => { x.blocos = []; }, /pelo menos um bloco/);
+  mau(x => { x.blocos[0].semanas = '30'; }, /1 a 26/);
+  mau(x => { x.blocos[0].semanas = ''; }, /Semanas/);
+  mau(x => { x.blocos[1].objetivo = 'magia'; }, /objetivo/);
+  mau(x => { x.blocos[2].nome = ' '; }, /nome ao bloco 3/);
+  mau(x => { x.inicio = ''; }, /início/);
+  assert.deepEqual(T.montarCiclo(T.rascunhoDoCiclo({ ...c, id: 'x' }, '2026-11-09')).dados, c, 'ida e volta pelo rascunho');
+}
+console.log('Treino aprovado: divisão livre, ficha conferida, chaves iguais às do banco, treino sugerido, frequência, cargas, 1RM e periodização por blocos.');

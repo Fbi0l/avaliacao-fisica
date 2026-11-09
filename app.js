@@ -13,7 +13,7 @@ const K = typeof module !== 'undefined' ? require('./calculos.js')
   : { POSTURA, POSTURA_OBS_MAX, posturaAvaliada, FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, paceTexto, ZONAS_CARGA, zonaCarga, cargasPorZona, zonasFC, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
 
 const T = typeof module !== 'undefined' ? require('./treino.js')
-  : { TREINO_LIMITES, GRUPOS, NOME_GRUPO, EXERCICIOS, OBJETIVOS, DIVISOES, trocarDivisao, montarFicha, rascunhoDaFicha, proximoTreino, semanaDaFicha, frequencia, cargasAnotadas, sugestaoCarga, prescricao };
+  : { CICLO_LIMITES, MODELOS_CICLO, blocosDoModelo, rascunhoDoCiclo, montarCiclo, datasDosBlocos, totalSemanas, blocoAtual, TREINO_LIMITES, GRUPOS, NOME_GRUPO, EXERCICIOS, OBJETIVOS, DIVISOES, trocarDivisao, montarFicha, rascunhoDaFicha, proximoTreino, semanaDaFicha, frequencia, cargasAnotadas, sugestaoCarga, prescricao };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -56,6 +56,8 @@ function lerRota(hash) {
   if ((m = h.match(new RegExp(`^aluno-${uuid}(?:-(evolucao|comparar|treino))?$`)))) return { tela: 'aluno', id: m[1], aba: m[2] || 'avaliacoes' };
   if ((m = h.match(new RegExp(`^ficha-nova-${uuid}$`)))) return { tela: 'fichaNova', id: m[1] };
   if ((m = h.match(new RegExp(`^ficha-${uuid}$`)))) return { tela: 'ficha', id: m[1] };
+  if ((m = h.match(new RegExp(`^ciclo-nova-${uuid}$`)))) return { tela: 'cicloNovo', id: m[1] };
+  if ((m = h.match(new RegExp(`^ciclo-${uuid}$`)))) return { tela: 'ciclo', id: m[1] };
   if ((m = h.match(new RegExp(`^av-${uuid}$`)))) return { tela: 'avaliacao', id: m[1] };
   if ((m = h.match(new RegExp(`^nova-${uuid}$`)))) return { tela: 'nova', id: m[1] };
   if ((m = h.match(new RegExp(`^editar-${uuid}$`)))) return { tela: 'editar', id: m[1] };
@@ -298,7 +300,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.1.0';
+const GUIA_REVISADO_NA_VERSAO = '1.2.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -323,7 +325,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['O balão no topo abre as conversas; o número em coral mostra quantas mensagens você ainda não leu.', 'Na ficha do aluno, “Mensagem” abre a conversa com ele. Pelo clipe, você envia uma avaliação: o aluno toca no cartão e ela abre.', 'Só alunos com acesso ao app conversam. Quem ainda não entrou aparece com “Convidar”.', 'As mensagens são dados do aluno: só vocês dois leem e elas são apagadas junto se ele pedir a exclusão.'] },
   { icone: '⚒', titulo: '7. Fichas de treino',
     texto: 'Na ficha do aluno, a aba “Treino” monta e acompanha o treino dele.',
-    itens: ['“+ Montar ficha”: escolha o objetivo, a duração e a divisão (corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, por dia da semana ou personalizada). Os nomes dos treinos são livres.', 'Em cada treino, “+ Da lista” traz exercícios prontos por grupo muscular; “+ Digitar exercício” aceita qualquer outro. Séries, repetições, carga, descanso e observação.', 'Se o aluno fez o 1RM do exercício na avaliação, o app mostra a % do 1RM e a faixa de carga do objetivo.', 'O aluno marca os treinos feitos e anota a carga: você vê a frequência, a % da meta e as cargas comparadas com a ficha.', '“Nova ficha” guarda a atual nas fichas anteriores; “Usar como base” copia uma ficha antiga.'] },
+    itens: ['“+ Montar ficha”: escolha o objetivo, a duração e a divisão (corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, por dia da semana ou personalizada). Os nomes dos treinos são livres.', 'Em cada treino, “+ Da lista” traz exercícios prontos por grupo muscular; “+ Digitar exercício” aceita qualquer outro. Séries, repetições, carga, descanso e observação.', 'Se o aluno fez o 1RM do exercício na avaliação, o app mostra a % do 1RM e a faixa de carga do objetivo.', 'O aluno marca os treinos feitos e anota a carga: você vê a frequência, a % da meta e as cargas comparadas com a ficha.', '“Nova ficha” guarda a atual nas fichas anteriores; “Usar como base” copia uma ficha antiga.', 'Periodização (opcional): em “Planejar”, divida o treino em blocos (adaptação, hipertrofia, força…) com objetivo e semanas. Em cada bloco, “Montar ficha” já traz o objetivo, as semanas e as repetições; o app mostra em que bloco e semana o aluno está.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
     itens: ['“Meus dados”, “Personais”, o tema (Auto, igual ao aparelho, Claro ou Escuro) e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
@@ -337,7 +339,7 @@ const PASSOS_TUTORIAL_ALUNO = [
     itens: ['O cartão “Treino de hoje” leva direto ao treino sugerido.', 'As setas mostram o que mudou desde a primeira avaliação. Verde quer dizer que mudou na direção boa.', '“Ver a avaliação completa” abre todos os detalhes.'] },
   { icone: '⚒', titulo: 'Treino',
     texto: 'A ficha que o seu personal montou. O app sugere o próximo treino da sequência.',
-    itens: ['Escolha o treino nos botões do topo, se quiser outro.', 'Marque cada exercício feito e, se quiser, anote a carga que usou em “Usei (kg)”.', 'No fim, toque em “Concluir”. Errou? “Desfazer o treino de hoje” volta as marcações.', 'O seu personal vê a sua frequência e as cargas anotadas.'] },
+    itens: ['Escolha o treino nos botões do topo, se quiser outro.', 'Marque cada exercício feito e, se quiser, anote a carga que usou em “Usei (kg)”.', 'No fim, toque em “Concluir”. Errou? “Desfazer o treino de hoje” volta as marcações.', 'Se o seu personal planejou uma periodização, o topo mostra em que bloco e semana você está.', 'O seu personal vê a sua frequência e as cargas anotadas.'] },
   { icone: '▤', titulo: 'Avaliações',
     texto: 'Todas as suas avaliações, da mais recente para a mais antiga.',
     itens: ['Em cada uma, os números principais ficam no topo e as partes (perímetros, força, testes físicos, avaliação postural, coração, zonas de treino) abrem com um toque.', '“Imprimir / PDF” gera o relatório.'] },
@@ -459,7 +461,7 @@ function iniciar() {
     return;
   }
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
-  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null, chat: { resumo: new Map(), aberto: null }, treino: new Map(), fichaRascunho: null, fichaBase: null };
+  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null, chat: { resumo: new Map(), aberto: null }, treino: new Map(), fichaRascunho: null, fichaBase: null, fichaBloco: null, cicloRascunho: null };
 
   /* ----- Confirmação ----- */
   function confirmar({ titulo, texto, botao = 'Excluir' }) {
@@ -546,6 +548,11 @@ function iniciar() {
         if (!f) { const { data } = await db.from('fichas').select('*').eq('id', r.id).maybeSingle(); f = data; }
         if (!f || !alunoPorId(f.aluno_id)) return ir('inicio');
         desenharLista(f.aluno_id); p.replaceChildren(...soElementos(await telaFicha(alunoPorId(f.aluno_id), f)));
+      } else if (r.tela === 'cicloNovo' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(await telaCiclo(alunoPorId(r.id), null))); }
+      else if (r.tela === 'ciclo') {
+        const { data: c } = await db.from('ciclos').select('*').eq('id', r.id).maybeSingle();
+        if (!c || !alunoPorId(c.aluno_id)) return ir('inicio');
+        desenharLista(c.aluno_id); p.replaceChildren(...soElementos(await telaCiclo(alunoPorId(c.aluno_id), c)));
       } else if (r.tela === 'nova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(telaFormulario(alunoPorId(r.id), null))); }
       else {
         desenharLista(null);
@@ -1199,11 +1206,12 @@ function iniciar() {
   /** Ficha e treinos feitos do aluno, com cache por aluno. */
   async function treinoDe(alunoId, recarregar = false) {
     if (!recarregar && est.treino.has(alunoId)) return est.treino.get(alunoId);
-    const [{ data: fichas, error: e1 }, { data: feitos, error: e2 }] = await Promise.all([
+    const [{ data: fichas, error: e1 }, { data: feitos, error: e2 }, { data: ciclos, error: e3 }] = await Promise.all([
       db.from('fichas').select('*').eq('aluno_id', alunoId).order('inicio').order('criado_em'),
-      db.from('treinos_feitos').select('id,ficha_id,treino,data,exercicios,criado_em').eq('aluno_id', alunoId).order('data').order('criado_em').limit(2000)]);
+      db.from('treinos_feitos').select('id,ficha_id,treino,data,exercicios,criado_em').eq('aluno_id', alunoId).order('data').order('criado_em').limit(2000),
+      db.from('ciclos').select('*').eq('aluno_id', alunoId).is('encerrado_em', null)]);
     if (e1 || e2) throw e1 || e2;
-    const r = { fichas, feitos, ativa: fichas.find(f => !f.encerrada_em) || null };
+    const r = { fichas, feitos, ativa: fichas.find(f => !f.encerrada_em) || null, ciclo: (!e3 && ciclos?.[0]) || null };
     est.treino.set(alunoId, r); return r;
   }
   /** Calendário das últimas semanas: cada dia com a letra do treino feito. */
@@ -1227,14 +1235,15 @@ function iniciar() {
 
   /** Aba Treino na ficha do aluno (personal): ficha ativa, frequência, cargas anotadas e histórico. */
   async function telaTreinoPersonal(a) {
-    const { fichas, feitos, ativa } = await treinoDe(a.id, true);
+    const { fichas, feitos, ativa, ciclo } = await treinoDe(a.id, true);
     const hoje = hojeISO(), antigas = fichas.filter(f => f.encerrada_em).reverse();
+    const periodizacao = cartaoCiclo(a, ciclo, fichas);
     const historico = antigas.length ? secao('Fichas anteriores', `${antigas.length} ${antigas.length === 1 ? 'ficha' : 'fichas'}`, false,
       h('div', { class: 'lista-fichas' }, antigas.map(f => { const n = feitos.filter(x => x.ficha_id === f.id).length;
         return h('div', { class: 'ficha-antiga' }, h('span', null, h('strong', null, resumoFicha(f)), h('span', { class: 'sub' }, `${dataCurta(f.inicio)} a ${dataCurta(f.encerrada_em)} · ${n} ${n === 1 ? 'treino feito' : 'treinos feitos'}`)),
           h('button', { class: 'btn', type: 'button', onclick: () => { est.fichaBase = f.id; est.fichaRascunho = null; ir('ficha-nova-' + a.id); } }, 'Usar como base')); }))) : null;
-    if (!ativa) return [h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Treino'), h('p', { class: 'sub' }, `${primeiro(a.nome)} ainda não tem ficha de treino ativa.`)),
-      h('a', { class: 'btn primary', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = null; est.fichaRascunho = null; } }, '+ Montar ficha')),
+    if (!ativa) return [periodizacao, h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Treino'), h('p', { class: 'sub' }, `${primeiro(a.nome)} ainda não tem ficha de treino ativa.`)),
+      h('a', { class: 'btn primary', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = null; est.fichaRascunho = null; est.fichaBloco = null; } }, '+ Montar ficha')),
       h('p', { class: 'aviso' }, 'Escolha a divisão que fizer sentido para o aluno (corpo inteiro, superior/inferior, ABC, por dia da semana ou a sua). ' + (a.usuario_id ? 'O aluno vê a ficha no app e marca os treinos feitos.' : 'Quando o aluno tiver acesso ao app, ele vê a ficha e marca os treinos feitos.'))), historico];
     const sem = T.semanaDaFicha(ativa, hoje), fr = T.frequencia(ativa, feitos, hoje), cg = T.cargasAnotadas(ativa, feitos);
     const semTxt = !sem.comecou ? `começa em ${dataBR(ativa.inicio)}` : ativa.semanas ? (sem.terminou ? `passou das ${ativa.semanas} semanas previstas` : `semana ${sem.semana} de ${ativa.semanas}`) : `semana ${sem.semana}`;
@@ -1245,14 +1254,14 @@ function iniciar() {
       if (error) return aviso('msgGlobal', erroBanco(error));
       rotear();
     };
-    return [h('section', { class: 'card' },
-      h('div', { class: 'card-topo' }, h('div', null, h('h2', null, resumoFicha(ativa)), h('p', { class: 'sub' }, `Desde ${dataBR(ativa.inicio)} · ${semTxt}${ativa.vezes_semana ? ` · meta ${ativa.vezes_semana}× por semana` : ''}`))),
+    return [periodizacao, h('section', { class: 'card' },
+      h('div', { class: 'card-topo' }, h('div', null, h('h2', null, resumoFicha(ativa) + (ciclo && ativa.ciclo_id === ciclo.id ? ` · bloco ${ativa.bloco + 1}` : '')), h('p', { class: 'sub' }, `Desde ${dataBR(ativa.inicio)} · ${semTxt}${ativa.vezes_semana ? ` · meta ${ativa.vezes_semana}× por semana` : ''}`))),
       sem.terminou ? h('p', { class: 'aviso' }, 'A duração prevista já passou: hora de trocar a ficha (e talvez reavaliar).') : null,
       h('div', { class: 'kpis kpis-3' }, kpi(String(fr.total), fr.total === 1 ? 'treino feito' : 'treinos feitos'), fr.meta != null ? kpi(`${fr.meta}%`, 'da meta até hoje') : null, kpi(quandoFoi(fr.ultimo), 'último treino')),
       calendarioTreinos(ativa, fr),
       !a.usuario_id ? h('p', { class: 'sub' }, `${primeiro(a.nome)} ainda não tem acesso ao app: os treinos feitos aparecem aqui quando ele entrar e marcar.`) : null,
       h('div', { class: 'linha' }, h('a', { class: 'btn', href: '#ficha-' + ativa.id, onclick: () => { est.fichaRascunho = null; } }, 'Editar ficha'),
-        h('a', { class: 'btn', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = ativa.id; est.fichaRascunho = null; } }, 'Nova ficha'),
+        h('a', { class: 'btn', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = ativa.id; est.fichaRascunho = null; est.fichaBloco = null; } }, 'Nova ficha'),
         h('button', { class: 'btn perigo-leve', type: 'button', onclick: encerrar }, 'Encerrar'))),
       cg.length ? secao('Cargas anotadas', `${cg.length} ${cg.length === 1 ? 'exercício' : 'exercícios'}`, true, h('div', { class: 'lista-cargas' }, cg.map(c =>
         h('div', { class: 'carga-linha' }, h('span', null, h('strong', null, c.nome), h('span', { class: 'sub' }, ` · ${c.treino} · ${quandoFoi(c.data)}`)),
@@ -1270,7 +1279,14 @@ function iniciar() {
       const base = !ficha && est.fichaBase ? tr.fichas.find(f => f.id === est.fichaBase) : null;
       const r = T.rascunhoDaFicha(ficha || base, hojeISO());
       if (base) r.inicio = hojeISO();
-      est.fichaRascunho = { chave, r, atual: 0 };
+      let bloco = null;
+      if (!ficha && est.fichaBloco) { // ficha de um bloco da periodização: já vem com o objetivo, as semanas e o início do bloco
+        const { ciclo, indice } = est.fichaBloco, b = ciclo.blocos[indice], d = T.datasDosBlocos(ciclo)[indice];
+        Object.assign(r, { objetivo: b.objetivo, semanas: b.semanas, inicio: d.inicio > hojeISO() ? d.inicio : hojeISO() });
+        r.treinos.forEach(t => t.exercicios.forEach(e => { if (T.OBJETIVOS[b.objetivo].reps) e.reps = T.OBJETIVOS[b.objetivo].reps; }));
+        bloco = { ciclo_id: ciclo.id, indice, nome: b.nome }; est.fichaBloco = null;
+      }
+      est.fichaRascunho = { chave, r, atual: 0, bloco };
     }
     const R = est.fichaRascunho, r = R.r;
     const rm = (zonasDoAluno(a, avs)?.exercicios) || [];
@@ -1359,7 +1375,7 @@ function iniciar() {
       else {
         const ativa = tr.ativa;
         if (ativa) ({ error } = await db.from('fichas').update({ encerrada_em: hojeISO() }).eq('id', ativa.id));
-        if (!error) ({ error } = await db.from('fichas').insert({ aluno_id: a.id, ...m.dados }));
+        if (!error) ({ error } = await db.from('fichas').insert({ aluno_id: a.id, ...m.dados, ...(R.bloco ? { ciclo_id: R.bloco.ciclo_id, bloco: R.bloco.indice } : {}) }));
         if (error && ativa) await db.from('fichas').update({ encerrada_em: null }).eq('id', ativa.id); // volta a anterior
       }
       b.disabled = false;
@@ -1369,6 +1385,7 @@ function iniciar() {
     }
     const form = h('form', { class: 'form-ficha', onsubmit: salvar, novalidate: true },
       h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, `${ficha ? 'Editar ficha' : 'Nova ficha'} · ${a.nome}`),
+        R.bloco ? h('p', { class: 'chip destaque-coral' }, `Bloco ${R.bloco.indice + 1} da periodização: ${R.bloco.nome}`) : null,
         h('p', { class: 'sub' }, ficha ? 'As mudanças valem a partir de agora; os treinos já feitos continuam no histórico.' : tr.ativa ? 'Ao salvar, a ficha atual vai para as fichas anteriores.' : 'Escolha o objetivo, a divisão e os exercícios. Só o nome do exercício é obrigatório.')))),
       area, msg,
       h('div', { class: 'form-pe' }, h('a', { class: 'btn', href: '#aluno-' + a.id + '-treino', onclick: () => { est.fichaRascunho = null; } }, 'Cancelar'),
@@ -1404,6 +1421,126 @@ function iniciar() {
       h('div', { class: 'dialogo-topo' }, h('h2', { id: 'exDlgTitulo' }, `Adicionar ao ${t.nome}`), h('button', { class: 'btn ghost', type: 'button', onclick: () => d.close() }, 'Fechar')),
       campo, chips, lista));
     listar(); d.showModal(); campo.focus();
+  }
+
+  /* ----- Periodização por blocos (1.2.0): opcional, por cima das fichas ----- */
+  const CORES_BLOCO = ['b0', 'b1', 'b2', 'b3'];
+  /** Faixa com os blocos proporcionais às semanas; o atual em destaque. */
+  function faixaCiclo(ciclo, atual) {
+    return h('div', { class: 'ciclo-faixa', 'aria-hidden': 'true' }, ciclo.blocos.map((b, i) => {
+      const el = h('div', { class: `ciclo-bloco ${CORES_BLOCO[i % 4]}${atual && !atual.antes && !atual.depois && atual.indice === i ? ' atual' : ''}` },
+        h('strong', null, b.nome), h('span', null, `${b.semanas} sem`));
+      el.style.flexGrow = String(b.semanas); return el;
+    }));
+  }
+  function textoBlocoAtual(ciclo, at) {
+    if (at.antes) return `Começa em ${dataBR(ciclo.inicio)}`;
+    if (at.depois) return 'Ciclo concluído: hora de reavaliar e planejar o próximo';
+    return `Agora: bloco ${at.indice + 1} de ${ciclo.blocos.length} · ${ciclo.blocos[at.indice].nome} · semana ${at.semana} de ${ciclo.blocos[at.indice].semanas}`;
+  }
+  /** Cartão da periodização na aba Treino do personal. */
+  function cartaoCiclo(a, ciclo, fichas) {
+    if (!ciclo) return h('section', { class: 'card ciclo-vazio' }, h('div', { class: 'card-topo' },
+      h('div', null, h('h3', { class: 'titulo-secao' }, 'Periodização (opcional)'), h('p', { class: 'sub' }, 'Divida o treino em blocos (adaptação, hipertrofia, força…), cada um com a sua ficha.')),
+      h('a', { class: 'btn', href: '#ciclo-nova-' + a.id, onclick: () => { est.cicloRascunho = null; } }, 'Planejar')));
+    const hoje = hojeISO(), at = T.blocoAtual(ciclo, hoje), datas = T.datasDosBlocos(ciclo);
+    const fichaDoBloco = i => fichas.filter(f => f.ciclo_id === ciclo.id && f.bloco === i).at(-1);
+    const semFichaAgora = !at.antes && !at.depois && !fichaDoBloco(at.indice);
+    const encerrar = async () => {
+      if (!await confirmar({ titulo: 'Encerrar a periodização?', texto: 'Ela sai da tela do aluno. As fichas dos blocos continuam no histórico.', botao: 'Encerrar' })) return;
+      const { error } = await db.from('ciclos').update({ encerrado_em: hoje }).eq('id', ciclo.id);
+      if (error) return aviso('msgGlobal', erroBanco(error));
+      rotear();
+    };
+    return h('section', { class: 'card' },
+      h('div', { class: 'card-topo' }, h('div', null, h('h2', null, ciclo.nome), h('p', { class: 'sub' }, [ciclo.meta, `${T.totalSemanas(ciclo)} semanas · ${dataCurta(ciclo.inicio)} a ${dataCurta(datas.at(-1).fim)}`].filter(Boolean).join(' · ')))),
+      faixaCiclo(ciclo, at),
+      h('p', { class: 'ciclo-agora' }, textoBlocoAtual(ciclo, at)),
+      semFichaAgora ? h('p', { class: 'aviso' }, `O bloco “${ciclo.blocos[at.indice].nome}” já começou e ainda não tem ficha. Monte a ficha dele abaixo.`) : null,
+      h('ol', { class: 'lista-blocos' }, ciclo.blocos.map((b, i) => {
+        const f = fichaDoBloco(i), d = datas[i], passado = Date.parse(d.fim) < Date.parse(hoje), agora = !at.antes && !at.depois && at.indice === i;
+        const estado = agora ? h('span', { class: 'chip destaque-coral' }, `Agora · semana ${at.semana} de ${b.semanas}`) : passado ? h('span', { class: 'chip bom' }, '✓ Concluído') : h('span', { class: 'chip' }, `Começa em ${dataCurta(d.inicio)}`);
+        return h('li', { class: 'bloco-item' + (agora ? ' atual' : '') },
+          h('span', { class: 'c-meio' }, h('span', { class: 'bloco-tit' }, h('strong', null, `${i + 1}. ${b.nome}`), estado),
+            h('span', { class: 'sub' }, `${T.OBJETIVOS[b.objetivo].nome} · ${b.semanas} ${b.semanas === 1 ? 'semana' : 'semanas'} · ${dataCurta(d.inicio)} a ${dataCurta(d.fim)}${T.OBJETIVOS[b.objetivo].de != null ? ` · ${T.OBJETIVOS[b.objetivo].reps} reps, ${T.OBJETIVOS[b.objetivo].de}–${T.OBJETIVOS[b.objetivo].ate}% do 1RM` : ''}`),
+            b.obs ? h('span', { class: 'sub' }, b.obs) : null),
+          f ? h('a', { class: 'btn', href: '#ficha-' + f.id, onclick: () => { est.fichaRascunho = null; } }, f.encerrada_em ? 'Ver ficha' : 'Ficha do bloco')
+            : passado ? null : h('a', { class: 'btn' + (agora ? ' primary' : ''), href: '#ficha-nova-' + a.id, onclick: () => { est.fichaRascunho = null; est.fichaBase = fichas.find(x => !x.encerrada_em)?.id || null; est.fichaBloco = { ciclo, indice: i }; } }, 'Montar ficha'));
+      })),
+      h('div', { class: 'linha' }, h('a', { class: 'btn', href: '#ciclo-' + ciclo.id, onclick: () => { est.cicloRascunho = null; } }, 'Editar periodização'),
+        h('button', { class: 'btn perigo-leve', type: 'button', onclick: encerrar }, 'Encerrar')));
+  }
+
+  /** Planejar ou editar a periodização (personal). */
+  async function telaCiclo(a, ciclo) {
+    const chave = ciclo ? ciclo.id : 'novo-' + a.id;
+    if (!est.cicloRascunho || est.cicloRascunho.chave !== chave) est.cicloRascunho = { chave, r: T.rascunhoDoCiclo(ciclo, hojeISO()) };
+    const r = est.cicloRascunho.r, area = h('div', { class: 'ficha-editor' }), msg = h('p', { class: 'msg', role: 'alert' });
+    const resumo = h('p', { class: 'ciclo-agora' }), faixa = h('div');
+    const atualizarResumo = () => {
+      const m = T.montarCiclo(r);
+      if (m.dados) { const d = T.datasDosBlocos(m.dados); resumo.textContent = `${T.totalSemanas(m.dados)} semanas · termina em ${dataBR(d.at(-1).fim)}`; faixa.replaceChildren(faixaCiclo(m.dados, T.blocoAtual(m.dados, hojeISO()))); }
+      else { resumo.textContent = ''; faixa.replaceChildren(); }
+    };
+    const inp = (rot, obj, k, attrs = {}) => h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, rot),
+      h('input', { value: obj[k] ?? '', autocomplete: 'off', ...attrs, oninput: ev => { obj[k] = ev.target.value; atualizarResumo(); } }));
+    function desenhar() {
+      area.replaceChildren(
+        h('section', { class: 'card' },
+          h('div', { class: 'campos' }, inp('Nome', r, 'nome', { maxlength: '60' }), h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Início'),
+            h('input', { type: 'date', value: r.inicio, oninput: ev => { r.inicio = ev.target.value; atualizarResumo(); } }))),
+          inp(['Meta ', h('span', { class: 'fraco' }, '(opcional)')], r, 'meta', { maxlength: '300', placeholder: 'ex.: hipertrofia com ganho de força, reavaliar na semana 16' }),
+          h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Começar de um modelo'),
+            h('select', { onchange: async ev => { const k = ev.target.value; ev.target.value = ''; if (!k) return;
+              if (r.blocos.length && !await confirmar({ titulo: 'Trocar os blocos pelo modelo?', texto: `Os blocos atuais são substituídos por “${T.MODELOS_CICLO[k].nome}”.`, botao: 'Trocar' })) return;
+              r.blocos = T.blocosDoModelo(k); desenhar(); } },
+              h('option', { value: '' }, '—'), Object.entries(T.MODELOS_CICLO).map(([k, m]) => h('option', { value: k }, m.nome)))),
+          faixa, resumo),
+        h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Blocos (mesociclos)'),
+          h('div', { class: 'ex-lista' }, r.blocos.map((b, i) => {
+            const mover = d => { const j = i + d; if (j < 0 || j >= r.blocos.length) return; [r.blocos[i], r.blocos[j]] = [r.blocos[j], r.blocos[i]]; desenhar(); };
+            return h('div', { class: 'ex-linha' },
+              h('div', { class: 'ex-topo' }, h('span', { class: 'ex-num', 'aria-hidden': 'true' }, String(i + 1)),
+                h('label', { class: 'campo ex-nome' }, h('span', { class: 'rotulo' }, `Bloco ${i + 1}`), h('input', { value: b.nome, maxlength: '40', autocomplete: 'off', oninput: ev => { b.nome = ev.target.value; atualizarResumo(); } })),
+                h('div', { class: 'ex-acoes' },
+                  h('button', { class: 'btn ghost icone', type: 'button', 'aria-label': `Subir ${b.nome}`, disabled: i === 0, onclick: () => mover(-1) }, '↑'),
+                  h('button', { class: 'btn ghost icone', type: 'button', 'aria-label': `Descer ${b.nome}`, disabled: i === r.blocos.length - 1, onclick: () => mover(1) }, '↓'),
+                  h('button', { class: 'btn ghost icone perigo-leve', type: 'button', 'aria-label': `Tirar ${b.nome}`, disabled: r.blocos.length === 1, onclick: () => { r.blocos.splice(i, 1); desenhar(); } }, '✕'))),
+              h('div', { class: 'campos' },
+                h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Objetivo'), h('select', { onchange: ev => { b.objetivo = ev.target.value; desenhar(); } },
+                  Object.entries(T.OBJETIVOS).map(([k, o]) => h('option', { value: k, selected: b.objetivo === k }, o.nome)))),
+                inp('Semanas', b, 'semanas', { inputMode: 'numeric' })),
+              T.OBJETIVOS[b.objetivo]?.de != null ? h('p', { class: 'sug-carga' }, `${T.OBJETIVOS[b.objetivo].reps} repetições · ${T.OBJETIVOS[b.objetivo].de}–${T.OBJETIVOS[b.objetivo].ate}% do 1RM`) : null,
+              inp(['Observação ', h('span', { class: 'fraco' }, '(opcional)')], b, 'obs', { maxlength: '300', placeholder: 'ex.: volume alto, descanso curto' }));
+          })),
+          r.blocos.length < T.CICLO_LIMITES.blocos ? h('button', { class: 'btn', type: 'button', onclick: () => { r.blocos.push({ nome: `Bloco ${r.blocos.length + 1}`, objetivo: 'hipertrofia', semanas: 4, obs: '' }); desenhar(); } }, '+ Acrescentar bloco') : null));
+      atualizarResumo();
+    }
+    async function salvar(ev) {
+      ev.preventDefault();
+      const m = T.montarCiclo(r);
+      if (m.erro) { msg.textContent = m.erro; msg.scrollIntoView({ block: 'center' }); return; }
+      const b = form.querySelector('[type=submit]'); b.disabled = true; msg.textContent = '';
+      const { error } = ciclo ? await db.from('ciclos').update(m.dados).eq('id', ciclo.id) : await db.from('ciclos').insert({ aluno_id: a.id, ...m.dados });
+      b.disabled = false;
+      if (error) { msg.textContent = /duplicate|unique/i.test(String(error.message)) ? 'Este aluno já tem uma periodização ativa. Encerre a atual antes de criar outra.' : erroBanco(error); return; }
+      est.cicloRascunho = null; est.treino.delete(a.id); ir('aluno-' + a.id + '-treino');
+    }
+    const excluir = ciclo ? async () => {
+      if (!await confirmar({ titulo: 'Apagar a periodização?', texto: 'Os blocos são apagados. As fichas continuam, sem ligação com o ciclo.', botao: 'Apagar' })) return;
+      const { error } = await db.from('ciclos').delete().eq('id', ciclo.id);
+      if (error) { msg.textContent = erroBanco(error); return; }
+      est.cicloRascunho = null; est.treino.delete(a.id); ir('aluno-' + a.id + '-treino');
+    } : null;
+    const form = h('form', { class: 'form-ficha', onsubmit: salvar, novalidate: true },
+      h('section', { class: 'card' }, h('h2', null, `${ciclo ? 'Editar periodização' : 'Periodização'} · ${a.nome}`),
+        h('p', { class: 'sub' }, 'Cada bloco tem um objetivo e uma duração. Depois de salvar, monte a ficha de cada bloco na aba Treino: o app já traz o objetivo e as semanas.')),
+      area, msg,
+      h('div', { class: 'form-pe' }, h('a', { class: 'btn', href: '#aluno-' + a.id + '-treino', onclick: () => { est.cicloRascunho = null; } }, 'Cancelar'),
+        excluir ? h('button', { class: 'btn perigo-leve', type: 'button', onclick: excluir }, 'Apagar') : null,
+        h('button', { class: 'btn primary', type: 'submit' }, 'Salvar periodização')));
+    desenhar();
+    return [h('div', { class: 'linha so-cel' }, h('a', { class: 'btn ghost', href: '#aluno-' + a.id + '-treino' }, '‹ ' + a.nome)), form];
   }
 
   /* ----- Aluno: Treino de hoje ----- */
@@ -1480,6 +1617,7 @@ function iniciar() {
     atualizarBarra();
     return [
       h('div', { class: 'treino-cab' }, h('p', { class: 'sub' }, `${resumoFicha(f)}${sem?.comecou && f.semanas ? ` · semana ${Math.min(sem.semana, f.semanas)} de ${f.semanas}` : ''}`), h('h2', { class: 'titulo-pagina' }, 'Treino de hoje')),
+      tr.ciclo ? (() => { const at = T.blocoAtual(tr.ciclo, hoje); return h('section', { class: 'card ciclo-aluno' }, h('p', { class: 'ciclo-agora' }, textoBlocoAtual(tr.ciclo, at)), faixaCiclo(tr.ciclo, at)); })() : null,
       parabens ? h('p', { class: 'aviso ok' }, `${parabens} concluído. Bom trabalho!`) : null,
       seletor,
       t.exercicios.length ? h('div', { class: 'treino-prog', 'aria-hidden': 'true' }, h('div', { class: 'treino-prog-trilho' }, barra), conta) : null,
@@ -1740,7 +1878,7 @@ function iniciar() {
     Object.assign(est, { papel: null, usuario: null }); // antes de fechar: fechar o guia ao sair não conta como visto
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     Object.assign(est, { papel: null, usuario: null, personal: null, alunos: [], rascunho: null, rascunhoChave: null });
-    est.avs.clear(); est.treino.clear(); est.fichaRascunho = null; est.fichaBase = null; est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
+    est.avs.clear(); est.treino.clear(); est.fichaRascunho = null; est.fichaBase = null; est.fichaBloco = null; est.cicloRascunho = null; est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
     $('navAluno').classList.add('hidden'); document.body.classList.remove('com-nav'); menuConta(false);
     est.chat = { resumo: new Map(), aberto: null }; $('msgBtn').classList.add('hidden'); atualizarBadges();
     $('senha').value = ''; mostrar('loginView');

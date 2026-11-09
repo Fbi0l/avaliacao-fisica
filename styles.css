@@ -570,3 +570,25 @@ nav.seletor{margin:0 0 14px}
 @media print{.ex-acoes,.abas-treino .mais{display:none}}
 .ex-carga input::placeholder{color:var(--muted);font-weight:400;opacity:.7}
 .ficha-editor .filtros{margin-bottom:14px}
+
+/* ---------- Periodização (1.2.0) ---------- */
+.ciclo-faixa{display:flex;gap:4px;margin:12px 0 6px}
+.ciclo-bloco{flex-basis:0;min-width:0;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:12px;border:2px solid transparent}
+.ciclo-bloco strong{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ciclo-bloco.b0{background:var(--good-soft);color:var(--good)}
+.ciclo-bloco.b1{background:var(--accent-soft);color:var(--accent-text)}
+.ciclo-bloco.b2{background:var(--mark-soft);color:var(--mark)}
+.ciclo-bloco.b3{background:var(--surface-2);color:var(--muted)}
+.ciclo-bloco.atual{border-color:var(--accent)}
+.ciclo-agora{margin:4px 0 8px;font-size:14px;font-weight:600}
+.lista-blocos{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:8px}
+.bloco-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.bloco-item.atual{border:2px solid var(--accent)}
+.bloco-item .c-meio{flex:1 1 220px}
+.bloco-item .c-meio .sub{white-space:normal}
+.bloco-tit{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bloco-tit .chip{margin-left:0}
+.ciclo-vazio .card-topo{align-items:center}
+.ciclo-aluno{padding:12px 14px;margin-bottom:12px}
+.ciclo-aluno .ciclo-agora{margin:0}
+@media (max-width:600px){.ciclo-bloco{padding:6px 7px}.ciclo-bloco span{font-size:11px}}

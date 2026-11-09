@@ -190,6 +190,65 @@ function prescricao(e) {
   return partes.join(' · ');
 }
 
+/* ---------- Periodização por blocos (1.2.0) ---------- */
+const CICLO_LIMITES = { blocos: 12, semanas: 26, nome: 60, nomeBloco: 40, meta: 300, obs: 300 };
+/** Modelos para começar rápido; o personal muda tudo depois. */
+const MODELOS_CICLO = {
+  hipertrofia: { nome: 'Hipertrofia com ganho de força · 16 semanas', blocos: [['Adaptação', 'resistencia', 4], ['Hipertrofia', 'hipertrofia', 6], ['Força', 'forca', 4], ['Polimento', 'saude', 2]] },
+  forca: { nome: 'Força · 12 semanas', blocos: [['Base de hipertrofia', 'hipertrofia', 4], ['Força', 'forca', 6], ['Polimento', 'saude', 2]] },
+  emagrecimento: { nome: 'Emagrecimento · 12 semanas', blocos: [['Adaptação', 'resistencia', 4], ['Emagrecimento', 'emagrecimento', 8]] },
+  saude: { nome: 'Saúde e condicionamento · 12 semanas', blocos: [['Adaptação', 'resistencia', 4], ['Condicionamento', 'saude', 8]] }
+};
+const blocosDoModelo = k => (MODELOS_CICLO[k]?.blocos || []).map(([nome, objetivo, semanas]) => ({ nome, objetivo, semanas, obs: '' }));
+
+function rascunhoDoCiclo(c, hoje) {
+  if (c) return { nome: c.nome, meta: c.meta || '', inicio: c.inicio, blocos: c.blocos.map(b => ({ nome: b.nome, objetivo: b.objetivo, semanas: b.semanas, obs: b.obs || '' })) };
+  return { nome: 'Periodização', meta: '', inicio: hoje, blocos: blocosDoModelo('hipertrofia') };
+}
+
+function montarCiclo(r) {
+  const L = CICLO_LIMITES;
+  const nome = textoOuNulo(r.nome) || 'Periodização';
+  if (nome.length > L.nome) return { erro: `O nome pode ter até ${L.nome} letras.` };
+  const meta = textoOuNulo(r.meta);
+  if (meta && meta.length > L.meta) return { erro: `A meta pode ter até ${L.meta} letras.` };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(r.inicio || ''))) return { erro: 'Informe a data de início.' };
+  const lista = r.blocos || [];
+  if (!lista.length) return { erro: 'A periodização precisa de pelo menos um bloco.' };
+  if (lista.length > L.blocos) return { erro: `A periodização pode ter até ${L.blocos} blocos.` };
+  const blocos = [];
+  for (const [i, b] of lista.entries()) {
+    const n = textoOuNulo(b.nome);
+    if (!n) return { erro: `Dê um nome ao bloco ${i + 1}.` };
+    if (n.length > L.nomeBloco) return { erro: `O nome do bloco pode ter até ${L.nomeBloco} letras.` };
+    if (!OBJETIVOS[b.objetivo]) return { erro: `Escolha o objetivo do bloco “${n}”.` };
+    const sem = numeroOuNulo(b.semanas);
+    if (sem === null || !Number.isInteger(sem) || sem < 1 || sem > L.semanas) return { erro: `Semanas do bloco “${n}”: de 1 a ${L.semanas}.` };
+    const obs = textoOuNulo(b.obs);
+    if (obs && obs.length > L.obs) return { erro: `Observação do bloco “${n}”: até ${L.obs} letras.` };
+    const x = { nome: n, objetivo: b.objetivo, semanas: sem };
+    if (obs) x.obs = obs;
+    blocos.push(x);
+  }
+  return { dados: { nome, meta, inicio: r.inicio, blocos } };
+}
+
+const isoDe = ms => new Date(ms).toISOString().slice(0, 10);
+/** Datas de cada bloco: início e último dia, um depois do outro a partir do início do ciclo. */
+function datasDosBlocos(ciclo) {
+  let ini = diaUTC(ciclo.inicio);
+  return ciclo.blocos.map(b => { const d = { inicio: isoDe(ini), fim: isoDe(ini + (b.semanas * 7 - 1) * diaMs) }; ini += b.semanas * 7 * diaMs; return d; });
+}
+const totalSemanas = ciclo => (ciclo?.blocos || []).reduce((t, b) => t + (Number(b.semanas) || 0), 0);
+/** Em que bloco o ciclo está hoje (e em que semana dele). Antes do início: antes = true; depois do fim: depois = true. */
+function blocoAtual(ciclo, hoje) {
+  const datas = datasDosBlocos(ciclo), h = diaUTC(hoje);
+  if (h < diaUTC(datas[0].inicio)) return { indice: 0, antes: true, depois: false, semana: 0, ...datas[0] };
+  const i = datas.findIndex(d => h <= diaUTC(d.fim));
+  if (i < 0) return { indice: datas.length - 1, antes: false, depois: true, semana: ciclo.blocos.at(-1).semanas, ...datas.at(-1) };
+  return { indice: i, antes: false, depois: false, semana: Math.floor((h - diaUTC(datas[i].inicio)) / (7 * diaMs)) + 1, ...datas[i] };
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { TREINO_LIMITES, GRUPOS, NOME_GRUPO, EXERCICIOS, OBJETIVOS, DIVISOES, trocarDivisao, montarFicha, rascunhoDaFicha, proximoTreino, semanaDaFicha, frequencia, cargasAnotadas, sugestaoCarga, prescricao };
+  module.exports = { CICLO_LIMITES, MODELOS_CICLO, blocosDoModelo, rascunhoDoCiclo, montarCiclo, datasDosBlocos, totalSemanas, blocoAtual, TREINO_LIMITES, GRUPOS, NOME_GRUPO, EXERCICIOS, OBJETIVOS, DIVISOES, trocarDivisao, montarFicha, rascunhoDaFicha, proximoTreino, semanaDaFicha, frequencia, cargasAnotadas, sugestaoCarga, prescricao };
 }
