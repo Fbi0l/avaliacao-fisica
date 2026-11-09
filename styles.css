@@ -497,3 +497,76 @@ body.com-nav .chat-pe{bottom:calc(76px + env(safe-area-inset-bottom))}
 /* iPhone: campo de data com a mesma altura e alinhamento dos outros */
 .campo input[type=date]{-webkit-appearance:none;appearance:none;display:block;text-align:left}
 .campo input[type=date]::-webkit-date-and-time-value{text-align:left}
+
+/* ---------- Fichas de treino (1.1.0) ---------- */
+.seletor a{min-height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:500;font-size:14px;text-decoration:none}
+.seletor a[aria-current="page"]{background:var(--surface);color:var(--ink);font-weight:600}
+nav.seletor{margin:0 0 14px}
+.kpis-3{grid-template-columns:repeat(3,minmax(0,1fr))!important;margin-top:10px}
+.kpis-3 .kpi .v{font-size:22px}
+.cal-treino{display:grid;gap:4px;margin:14px 0 6px}
+.cal-linha{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr));gap:4px;align-items:center}
+.cal-cab span{font-size:11px;color:var(--muted);text-align:center;font-weight:600}
+.cal-sem{font-size:12px;color:var(--muted)}
+.cal-dia{height:30px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent-text)}
+.cal-dia.feito{background:var(--accent-soft)}
+.cal-dia.futuro{background:transparent;border:1px dashed var(--line)}
+.ficha-treinos{display:grid;gap:14px}
+.lista-ex{margin:6px 0 0;padding-left:22px;display:grid;gap:6px}
+.lista-ex li{display:flex;flex-direction:column}
+.lista-fichas,.lista-cargas{display:grid;gap:2px}
+.ficha-antiga,.carga-linha{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.ficha-antiga:last-child,.carga-linha:last-child{border-bottom:0}
+.ficha-antiga>span{display:flex;flex-direction:column;min-width:0}
+.form-ficha{display:grid;gap:14px}
+.form-ficha .card{margin:0}
+.ficha-editor{display:grid;gap:14px}
+.abas-treino{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.abas-treino button{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-weight:500;font-size:15px}
+.abas-treino button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.abas-treino button[aria-selected="true"] .sub{color:inherit;opacity:.85}
+.abas-treino .mais{width:44px;padding:0;border-style:dashed;font-size:20px;color:var(--muted)}
+.ex-cab{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+.ex-cab .campo{flex:1 1 220px}
+.ex-lista{display:grid;gap:10px;margin-bottom:12px}
+.ex-linha{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px;background:var(--bg)}
+.ex-topo{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.ex-num{width:28px;height:28px;flex:none;border-radius:999px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;font-weight:700;font-size:13px;margin-bottom:10px}
+.ex-nome{flex:1 1 200px;min-width:0}
+.ex-acoes{margin-left:auto}
+.ex-acoes{display:flex;gap:2px}
+.ex-acoes .btn{min-width:40px;min-height:44px;padding:0}
+.ex-campos{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+.sug-carga{margin:-2px 0 0;font-size:13px;color:var(--good);font-weight:600}
+.sug-carga:empty{display:none}
+.ex-escolha{display:grid;max-height:min(50vh,420px);overflow-y:auto;margin-top:10px;border:1px solid var(--line);border-radius:12px}
+.ex-op{display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:52px;padding:0 14px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);text-align:left;font-size:15px}
+.ex-op:last-child{border-bottom:0}
+.ex-op:hover,.ex-op:focus-visible{background:var(--surface-2)}
+.ex-op.novo{color:var(--accent-text);font-weight:600}
+#exDialog .filtros{margin-top:10px}
+#exDialog input[type=search]{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px}
+.cartao-treino{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none}
+.treino-cab{margin-bottom:10px}
+.treino-cab .sub{margin:0}
+.seletor-treino{margin-bottom:12px;grid-auto-columns:minmax(120px,1fr);overflow-x:auto}
+.seletor-treino button{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 8px}
+.seletor-treino .sub{font-size:12px;font-weight:500}
+.seletor-treino .sub.sugerido{color:var(--accent-text);font-weight:600}
+.treino-prog{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.treino-prog-trilho{flex:1;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.treino-prog-barra{height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .2s}
+@media (prefers-reduced-motion:reduce){.treino-prog-barra{transition:none}}
+.treino-prog .num{font-size:13px;font-weight:600}
+.lista-treino{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.ex-feito{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.ex-marca{flex:1;display:flex;align-items:center;gap:12px;min-width:0;min-height:44px;cursor:pointer}
+.ex-marca input{width:26px;height:26px;flex:none;accent-color:var(--accent);margin:0}
+.ex-feito.feito .ex-marca strong{color:var(--muted);text-decoration:line-through}
+.ex-carga{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.ex-carga input{width:72px;min-height:44px;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px;font-weight:600;text-align:right;color:var(--ink)}
+.aviso.ok{background:var(--good-soft);color:var(--good);font-weight:600}
+.lista-simples{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+@media print{.ex-acoes,.abas-treino .mais{display:none}}
+.ex-carga input::placeholder{color:var(--muted);font-weight:400;opacity:.7}
+.ficha-editor .filtros{margin-bottom:14px}

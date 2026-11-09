@@ -55,7 +55,7 @@ echo "Conferindo se o arquivo pode ser lido por inteiro..."
 indice="$(pg pg_restore --list "/backup/$base.dump")"
 pg pg_restore --file=/dev/null "/backup/$base.dump" >/dev/null
 if [[ "$escopo" == dados ]]; then
-  for tabela in personais alunos avaliacoes consentimentos mensagens; do
+  for tabela in personais alunos avaliacoes consentimentos mensagens fichas treinos_feitos; do
     grep -qE "TABLE DATA public $tabela " <<<"$indice" || { echo "::error::Backup sem os dados de $tabela" >&2; exit 1; }
   done
   grep -qE "FUNCTION privado meu_aluno_id" <<<"$indice" || { echo "::error::Backup sem as funcoes do esquema privado" >&2; exit 1; }

@@ -10,7 +10,7 @@
 // - A resposta não revela se um e-mail já tem conta. Senhas vazadas são recusadas (k-anonimato).
 // Testado em tests/registrar-aluno.mjs.
 
-export const TERMO_VERSAO = '2026-11-09';
+export const TERMO_VERSAO = '2026-11-10';
 export const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao do app.js
 const ORIGENS = ['https://fbi0l.github.io', 'http://localhost:8098'];
 const RE_CODIGO = /^[A-Za-z0-9_-]{43}$/;

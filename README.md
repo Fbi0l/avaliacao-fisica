@@ -2,6 +2,15 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.1.0 — Fichas de treino
+
+- **Personal:** nova aba **Treino** na ficha do aluno. "+ Montar ficha": objetivo (hipertrofia, força, emagrecimento, resistência, saúde), início, duração em semanas, treinos por semana e a **divisão livre**: corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, ABCD/ABCDE, por dia da semana ou personalizada, com os nomes que quiser e até 10 treinos.
+- Exercícios pela **lista pronta** (busca e grupos musculares) ou digitados; séries, repetições, carga, descanso e observação, com ordem ajustável. Se o aluno tem o 1RM do exercício na avaliação, o app mostra a % do 1RM e a faixa de carga do objetivo.
+- **Acompanhamento:** treinos feitos, % da meta até hoje, último treino, calendário das últimas semanas e as cargas anotadas pelo aluno comparadas com a ficha (↑ ↓). "Nova ficha" guarda a atual nas fichas anteriores; "Usar como base" copia uma ficha antiga.
+- **Aluno:** nova aba **Treino** (Início, Treino, Avaliações, Mensagens, Perfil; a Evolução passou para dentro de Avaliações). O app sugere o próximo treino da sequência; o aluno marca os exercícios feitos, anota a carga, conclui e pode desfazer o do dia. Cartão "Treino de hoje" no Início.
+- Banco: tabelas `fichas` e `treinos_feitos` (migração `fichas_treino`), com regras de acesso: o personal só vê os próprios alunos; o aluno só lê a ficha e registra os próprios treinos. Tudo sai junto na exclusão do aluno.
+- **Termo do aluno atualizado** (versão 2026-11-10): cita a ficha e os treinos registrados. Guia de uso atualizado (personal e aluno).
+
 ## Versão 1.0.2 — Tema claro e escuro
 
 - No menu da conta (o círculo com as iniciais, no topo), escolha o tema: **Auto** (segue o celular, como antes), **Claro** ou **Escuro**. A escolha fica salva neste aparelho e vale para personal e aluno.

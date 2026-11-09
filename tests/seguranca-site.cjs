@@ -16,10 +16,10 @@ assert.ok(!/<script(?![^>]*\ssrc=)[^>]*>/.test(html), 'script inline');
 assert.ok(!/\son[a-z]+=/i.test(html), 'atributo on* inline');
 assert.ok(!/\sstyle=/i.test(html), 'atributo style inline');
 assert.ok(!/<style/i.test(html), 'bloco <style> inline');
-for (const arquivo of ['app.js', 'calculos.js', 'tema.js'])
+for (const arquivo of ['app.js', 'calculos.js', 'tema.js', 'treino.js'])
   assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function|setAttribute\(\s*['"]style/.test(fs.readFileSync(arquivo, 'utf8')), `${arquivo} monta HTML ou código a partir de texto`);
 const locais = [...html.matchAll(/<script\s[^>]*src="([^":]+?)(\?[^"]*)?"/g)].map(m => m[1]);
-assert.deepEqual(locais.sort(), ['app.js', 'calculos.js', 'tema.js']);
+assert.deepEqual(locais.sort(), ['app.js', 'calculos.js', 'tema.js', 'treino.js']);
 
 const csp = (html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
 assert.ok(csp, 'política CSP ausente');

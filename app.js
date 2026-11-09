@@ -5,12 +5,15 @@
 // Projeto Supabase "avaliacao-fisica" (São Paulo). Só o endereço e a chave PUBLICÁVEL; nunca a secreta.
 const SUPABASE_URL = 'https://rsgbuvjrkrrybzoacjrh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x1nqjAFBALSgKIXoaDxrXg_pBHxArki';
-const TERMO_VERSAO = '2026-11-09'; // igual ao da função registrar-aluno
+const TERMO_VERSAO = '2026-11-10'; // igual ao da função registrar-aluno
 const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
   : { POSTURA, POSTURA_OBS_MAX, posturaAvaliada, FLEXITESTE, MIN_FLEXITESTE_SUGERIDO, paceTexto, ZONAS_CARGA, zonaCarga, cargasPorZona, zonasFC, PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
+
+const T = typeof module !== 'undefined' ? require('./treino.js')
+  : { TREINO_LIMITES, GRUPOS, NOME_GRUPO, EXERCICIOS, OBJETIVOS, DIVISOES, trocarDivisao, montarFicha, rascunhoDaFicha, proximoTreino, semanaDaFicha, frequencia, cargasAnotadas, sugestaoCarga, prescricao };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -45,17 +48,19 @@ function situacaoConvite(c) {
 }
 function expirouPorInatividade(ultima, agora, limite = INATIVIDADE_MS) { const t = Number(ultima); return Number.isFinite(t) && t > 0 && agora - t > limite; }
 
-/** Lê a rota do endereço (#aluno-<id>, #aluno-<id>-evolucao, #av-<id>, #nova-<id>, #editar-<id>, #conversa-<id>, #mensagens). */
+/** Lê a rota do endereço (#aluno-<id>[-evolucao|-comparar|-treino], #av-<id>, #nova-<id>, #editar-<id>, #ficha-nova-<aluno>, #ficha-<id>, #conversa-<id>, #mensagens, #treino). */
 function lerRota(hash) {
   const h = String(hash || '').replace(/^#/, '');
   const uuid = '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})';
   let m;
-  if ((m = h.match(new RegExp(`^aluno-${uuid}(?:-(evolucao|comparar))?$`)))) return { tela: 'aluno', id: m[1], aba: m[2] || 'avaliacoes' };
+  if ((m = h.match(new RegExp(`^aluno-${uuid}(?:-(evolucao|comparar|treino))?$`)))) return { tela: 'aluno', id: m[1], aba: m[2] || 'avaliacoes' };
+  if ((m = h.match(new RegExp(`^ficha-nova-${uuid}$`)))) return { tela: 'fichaNova', id: m[1] };
+  if ((m = h.match(new RegExp(`^ficha-${uuid}$`)))) return { tela: 'ficha', id: m[1] };
   if ((m = h.match(new RegExp(`^av-${uuid}$`)))) return { tela: 'avaliacao', id: m[1] };
   if ((m = h.match(new RegExp(`^nova-${uuid}$`)))) return { tela: 'nova', id: m[1] };
   if ((m = h.match(new RegExp(`^editar-${uuid}$`)))) return { tela: 'editar', id: m[1] };
   if ((m = h.match(new RegExp(`^conversa-${uuid}$`)))) return { tela: 'conversa', id: m[1] };
-  if (/^(inicio|avaliacoes|evolucao|perfil|mensagens)$/.test(h)) return { tela: h };
+  if (/^(inicio|avaliacoes|evolucao|perfil|mensagens|treino)$/.test(h)) return { tela: h };
   return { tela: 'inicio' };
 }
 
@@ -293,7 +298,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.0.2';
+const GUIA_REVISADO_NA_VERSAO = '1.1.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -316,22 +321,28 @@ const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✎', titulo: '6. Mensagens',
     texto: 'Converse com cada aluno pelo próprio app, sem misturar com o WhatsApp.',
     itens: ['O balão no topo abre as conversas; o número em coral mostra quantas mensagens você ainda não leu.', 'Na ficha do aluno, “Mensagem” abre a conversa com ele. Pelo clipe, você envia uma avaliação: o aluno toca no cartão e ela abre.', 'Só alunos com acesso ao app conversam. Quem ainda não entrou aparece com “Convidar”.', 'As mensagens são dados do aluno: só vocês dois leem e elas são apagadas junto se ele pedir a exclusão.'] },
+  { icone: '⚒', titulo: '7. Fichas de treino',
+    texto: 'Na ficha do aluno, a aba “Treino” monta e acompanha o treino dele.',
+    itens: ['“+ Montar ficha”: escolha o objetivo, a duração e a divisão (corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, por dia da semana ou personalizada). Os nomes dos treinos são livres.', 'Em cada treino, “+ Da lista” traz exercícios prontos por grupo muscular; “+ Digitar exercício” aceita qualquer outro. Séries, repetições, carga, descanso e observação.', 'Se o aluno fez o 1RM do exercício na avaliação, o app mostra a % do 1RM e a faixa de carga do objetivo.', 'O aluno marca os treinos feitos e anota a carga: você vê a frequência, a % da meta e as cargas comparadas com a ficha.', '“Nova ficha” guarda a atual nas fichas anteriores; “Usar como base” copia uma ficha antiga.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
     itens: ['“Meus dados”, “Personais”, o tema (Auto, igual ao aparelho, Claro ou Escuro) e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
 ];
 const PASSOS_TUTORIAL_ALUNO = [
   { icone: '✦', titulo: 'Bem-vindo!',
-    texto: 'Aqui você acompanha as avaliações físicas que o seu personal registra.',
-    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.', 'As abas embaixo levam a cada parte: Início, Avaliações, Evolução, Mensagens e Perfil.'] },
+    texto: 'Aqui você acompanha o seu treino e as avaliações físicas que o seu personal registra.',
+    itens: ['Você só vê os seus dados. Ninguém mais tem acesso pelo app.', 'As abas embaixo levam a cada parte: Início, Treino, Avaliações (com a Evolução), Mensagens e Perfil.'] },
   { icone: '⌂', titulo: 'Início',
     texto: 'Os principais resultados da última avaliação: gordura, massa muscular, peso e cintura, e o recado do seu personal.',
-    itens: ['As setas mostram o que mudou desde a primeira avaliação. Verde quer dizer que mudou na direção boa.', '“Ver a avaliação completa” abre todos os detalhes.'] },
+    itens: ['O cartão “Treino de hoje” leva direto ao treino sugerido.', 'As setas mostram o que mudou desde a primeira avaliação. Verde quer dizer que mudou na direção boa.', '“Ver a avaliação completa” abre todos os detalhes.'] },
+  { icone: '⚒', titulo: 'Treino',
+    texto: 'A ficha que o seu personal montou. O app sugere o próximo treino da sequência.',
+    itens: ['Escolha o treino nos botões do topo, se quiser outro.', 'Marque cada exercício feito e, se quiser, anote a carga que usou em “Usei (kg)”.', 'No fim, toque em “Concluir”. Errou? “Desfazer o treino de hoje” volta as marcações.', 'O seu personal vê a sua frequência e as cargas anotadas.'] },
   { icone: '▤', titulo: 'Avaliações',
     texto: 'Todas as suas avaliações, da mais recente para a mais antiga.',
     itens: ['Em cada uma, os números principais ficam no topo e as partes (perímetros, força, testes físicos, avaliação postural, coração, zonas de treino) abrem com um toque.', '“Imprimir / PDF” gera o relatório.'] },
   { icone: '↗', titulo: 'Evolução e zonas',
-    texto: 'O gráfico mostra como cada medida mudou; escolha a medida nos botões acima dele.',
+    texto: 'Em Avaliações, toque em “Evolução”: o gráfico mostra como cada medida mudou; escolha a medida nos botões acima dele.',
     itens: ['Zonas de frequência cardíaca: em que batimentos treinar cada intensidade.', 'Zonas de carga: digite a carga de um exercício e veja se está em resistência, hipertrofia ou força.', 'A cada nova avaliação, tudo se atualiza sozinho.'] },
   { icone: '✎', titulo: 'Mensagens',
     texto: 'Converse com o seu personal pelo app: dúvidas sobre a avaliação, o treino ou o que precisar.',
@@ -448,7 +459,7 @@ function iniciar() {
     return;
   }
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
-  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null, chat: { resumo: new Map(), aberto: null } };
+  const est = { papel: null, usuario: null, personal: null, alunos: [], resumo: new Map(), avs: new Map(), busca: '', filtro: 'todos', aluno: null, rascunho: null, passo: 0, editandoAluno: null, conviteAluno: null, chat: { resumo: new Map(), aberto: null }, treino: new Map(), fichaRascunho: null, fichaBase: null };
 
   /* ----- Confirmação ----- */
   function confirmar({ titulo, texto, botao = 'Excluir' }) {
@@ -529,6 +540,12 @@ function iniciar() {
         desenharLista(a.id);
         p.replaceChildren(telaConversa({ alunoId: a.id, nome: a.nome, detalhe: ult ? `Última avaliação em ${dataMsg(ult.data)}` : 'Sem avaliação ainda', voltar: '#mensagens', ficha: '#aluno-' + a.id, avaliacoes: avs }));
         atualizarConversa(); return;
+      } else if (r.tela === 'fichaNova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(await telaFicha(alunoPorId(r.id), null))); }
+      else if (r.tela === 'ficha') {
+        let f = null; for (const x of est.treino.values()) f = f || x.fichas.find(y => y.id === r.id);
+        if (!f) { const { data } = await db.from('fichas').select('*').eq('id', r.id).maybeSingle(); f = data; }
+        if (!f || !alunoPorId(f.aluno_id)) return ir('inicio');
+        desenharLista(f.aluno_id); p.replaceChildren(...soElementos(await telaFicha(alunoPorId(f.aluno_id), f)));
       } else if (r.tela === 'nova' && alunoPorId(r.id)) { desenharLista(r.id); p.replaceChildren(...soElementos(telaFormulario(alunoPorId(r.id), null))); }
       else {
         desenharLista(null);
@@ -561,10 +578,11 @@ function iniciar() {
           est.chat.resumo.get(a.id)?.naoLidas ? h('span', { class: 'badge' }, String(est.chat.resumo.get(a.id).naoLidas), h('span', { class: 'sr-only' }, ' não lidas')) : null) : null,
         h('button', { class: 'btn primary', type: 'button', onclick: () => ir('nova-' + a.id) }, '+ Nova avaliação'))));
     const abas = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções do aluno' },
-      [['avaliacoes', 'Avaliações', ''], ['evolucao', 'Evolução', '-evolucao'], ['comparar', 'Comparar', '-comparar']].map(([k, t, suf]) =>
+      [['avaliacoes', 'Avaliações', ''], ['treino', 'Treino', '-treino'], ['evolucao', 'Evolução', '-evolucao'], ['comparar', 'Comparar', '-comparar']].map(([k, t, suf]) =>
         h('button', { type: 'button', role: 'tab', 'aria-selected': String(aba === k), onclick: () => ir('aluno-' + a.id + suf) }, t)));
     let corpo;
-    if (!avs.length) corpo = h('section', { class: 'card' }, h('p', { class: 'aviso' }, `${primeiro(a.nome)} ainda não tem avaliação. Toque em “+ Nova avaliação” para registrar a primeira.`));
+    if (aba === 'treino') corpo = await telaTreinoPersonal(a);
+    else if (!avs.length) corpo = h('section', { class: 'card' }, h('p', { class: 'aviso' }, `${primeiro(a.nome)} ainda não tem avaliação. Toque em “+ Nova avaliação” para registrar a primeira.`));
     else if (aba === 'evolucao') corpo = h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Evolução'), h('p', { class: 'sub' }, `${avs.length} avaliações. Verde quando a mudança vai na direção desejada.`))),
       h('div', { class: 'graficos' }, SERIES.map(sr => grafico(a, avs, sr))));
     else if (aba === 'comparar') corpo = telaComparar(a, avs);
@@ -575,7 +593,7 @@ function iniciar() {
         h('span', null, h('span', { class: 'k' }, 'Gordura'), h('span', { class: 'v' }, c.gordura == null ? '—' : `${fmt(c.gordura)}%`)),
         h('span', { class: 'some-cel' }, h('span', { class: 'k' }, 'M. muscular'), h('span', { class: 'v' }, c.massaMuscular == null ? '—' : `${fmt(c.massaMuscular)} kg`))); })));
     const voltar = h('div', { class: 'linha so-cel' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('inicio') }, '‹ Alunos'));
-    return [voltar, cab, abas, corpo];
+    return [voltar, cab, abas, corpo].flat();
   }
 
   /* ----- Resultado de uma avaliação ----- */
@@ -1084,15 +1102,21 @@ function iniciar() {
     if (error || !eu) throw error || new Error('sem ficha');
     est.aluno = { eu, avs, personal: pers?.nome && pers.nome !== 'Personal' ? pers.nome : 'seu personal', serie: 'Gordura' };
     mostrarQuem(eu.nome);
+    await carregarTreinoAluno(); est.aluno.treinoEm = Date.now();
   }
   function rotearAluno() {
     if (est.papel !== 'aluno' || !est.aluno) return;
     const r = lerRota(location.hash), { eu, avs } = est.aluno;
     const v = r.tela === 'avaliacao' ? avs.find(x => x.id === r.id) : null;
-    const aba = v ? 'avaliacoes' : ['avaliacoes', 'evolucao', 'perfil', 'mensagens'].includes(r.tela) ? r.tela : 'inicio';
+    const aba = v ? 'avaliacoes' : ['avaliacoes', 'evolucao', 'perfil', 'mensagens', 'treino'].includes(r.tela) ? r.tela : 'inicio';
     est.chat.aberto = null;
-    document.querySelectorAll('#navAluno a').forEach(a => a.setAttribute('aria-current', a.dataset.aba === aba ? 'page' : 'false'));
-    const tela = v ? telaResultado(eu, v, { paraAluno: true }) : aba === 'avaliacoes' ? alunoAvaliacoes() : aba === 'evolucao' ? alunoEvolucao() : aba === 'perfil' ? alunoPerfil() : aba === 'mensagens' ? alunoMensagens() : alunoInicio();
+    const abaNav = aba === 'evolucao' ? 'avaliacoes' : aba; // a Evolução fica dentro de Avaliações (máximo de 5 abas)
+    document.querySelectorAll('#navAluno a').forEach(a => a.setAttribute('aria-current', a.dataset.aba === abaNav ? 'page' : 'false'));
+    const tela = v ? telaResultado(eu, v, { paraAluno: true }) : aba === 'avaliacoes' ? alunoAvaliacoes() : aba === 'evolucao' ? alunoEvolucao() : aba === 'perfil' ? alunoPerfil() : aba === 'mensagens' ? alunoMensagens() : aba === 'treino' ? alunoTreino() : alunoInicio();
+    if (aba === 'treino' && Date.now() - (est.aluno.treinoEm || 0) > 60000) { // ficha nova do personal: busca de novo, sem apagar o que foi marcado
+      est.aluno.treinoEm = Date.now(); const antes = JSON.stringify(est.aluno.treino);
+      carregarTreinoAluno().then(() => { if (lerRota(location.hash).tela === 'treino' && JSON.stringify(est.aluno.treino) !== antes) rotearAluno(); });
+    }
     $('areaAluno').replaceChildren(...soElementos(tela));
     window.scrollTo({ top: 0 });
     if (aba === 'mensagens') atualizarConversa();
@@ -1101,12 +1125,12 @@ function iniciar() {
     const { eu, avs, personal } = est.aluno;
     const ola = h('section', { class: 'card ola' }, h('p', { class: 'sub' }, 'Olá,'), h('h2', null, primeiro(eu.nome)),
       avs.length ? h('p', { class: 'sub' }, `Última avaliação em ${dataBR(avs.at(-1).data)} · ${avs.length} ${avs.length === 1 ? 'avaliação' : 'avaliações'} com ${personal}`) : null);
-    if (!avs.length) return [ola, h('p', { class: 'aviso' }, `Você ainda não tem avaliação registrada. Assim que ${personal} registrar a primeira, ela aparece aqui.`)];
+    if (!avs.length) return [ola, cartaoTreinoInicio(), h('p', { class: 'aviso' }, `Você ainda não tem avaliação registrada. Assim que ${personal} registrar a primeira, ela aparece aqui.`)];
     const ult = avs.at(-1), pri = avs[0], c = K.calcular(eu, ult), c0 = K.calcular(eu, pri), varias = avs.length > 1;
     const delta = (dif, un, d) => !varias || !Number.isFinite(dif) ? null
       : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '▲ +' : dif < 0 ? '▼ ' : ''}${fmt(dif)} ${un}${sentido(dif, d) === 'bom' ? ' · melhorou' : ''}`);
     const kpi = (k, valor, un, ...extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, fmt(valor), valor == null ? null : h('small', null, un)), ...extra);
-    return [ola,
+    return [ola, cartaoTreinoInicio(),
       h('div', { class: 'grandes' },
         kpi('Gordura corporal', c.gordura, '%', delta(c.gordura - c0.gordura, 'pontos', -1), c.classeGordura ? chip(c.classeGordura) : null),
         kpi('Massa muscular', c.massaMuscular, 'kg', delta(c.massaMuscular - c0.massaMuscular, 'kg', 1)),
@@ -1116,10 +1140,12 @@ function iniciar() {
         h('a', { class: 'btn', href: '#mensagens' }, ic('M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z', 18), `Conversar com ${personal}`)),
       h('a', { class: 'btn primary grande', href: '#av-' + ult.id }, 'Ver a avaliação completa ›')];
   }
+  const seletorAvaliacoes = atual => h('nav', { class: 'seletor', 'aria-label': 'Avaliações ou evolução' },
+    [['avaliacoes', 'Lista'], ['evolucao', 'Evolução']].map(([k, t]) => h('a', { href: '#' + k, 'aria-current': atual === k ? 'page' : 'false' }, t)));
   function alunoAvaliacoes() {
     const { eu, avs } = est.aluno;
     if (!avs.length) return h('p', { class: 'aviso' }, 'Nenhuma avaliação ainda.');
-    return [h('h2', { class: 'titulo-pagina' }, 'Avaliações'),
+    return [h('h2', { class: 'titulo-pagina' }, 'Avaliações'), seletorAvaliacoes('avaliacoes'),
       h('div', { class: 'lista-av' }, [...avs].reverse().map((v, i) => { const c = K.calcular(eu, v);
         return h('a', { class: 'linha-lista', href: '#av-' + v.id },
           h('span', { class: 's-tit' }, h('strong', null, dataBR(v.data), i === 0 ? h('span', { class: 'chip destaque-coral' }, 'Mais recente') : null),
@@ -1128,7 +1154,7 @@ function iniciar() {
   }
   function alunoEvolucao() {
     const { eu, avs } = est.aluno;
-    const titulo = h('h2', { class: 'titulo-pagina' }, 'Evolução');
+    const titulo = [h('h2', { class: 'titulo-pagina' }, 'Evolução'), seletorAvaliacoes('evolucao')];
     const z = zonasDoAluno(eu, avs);
     const zonas = z ? secaoZonas({ fc: z.fc, exercicios: z.exercicios, paraAluno: true, dataFC: z.dataFC }) : null;
     if (avs.length < 2) return [titulo, h('p', { class: 'aviso' }, 'Os gráficos de evolução aparecem a partir da sua segunda avaliação.'), zonas];
@@ -1161,6 +1187,309 @@ function iniciar() {
         h('p', { class: 'parecer' }, `Só você e ${personal} veem as suas avaliações pelo app. As mensagens de vocês também. Para corrigir alguma informação ou pedir a exclusão completa dos seus dados (avaliações e mensagens), fale com ${personal}.`)),
       h('div', { class: 'linha' }, h('button', { class: 'btn', type: 'button', onclick: abrirTutorial }, 'Como usar o app'),
         h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => $('sairBtn').click() }, 'Sair'))];
+  }
+
+  /* ----- Fichas de treino (1.1.0): o personal monta, o aluno marca o feito ----- */
+  const IC_PESO = ['M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12'];
+  const letraDia = iso => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][new Date(iso + 'T12:00:00').getDay()];
+  const somaDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${doisDigitos(d.getMonth() + 1)}-${doisDigitos(d.getDate())}`; };
+  const quandoFoi = iso => { if (!iso) return '—'; const n = Math.round((Date.parse(hojeISO()) - Date.parse(iso)) / 864e5); return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : n < 7 ? `há ${n} dias` : dataCurta(iso); };
+  const nomeDivisao = k => T.DIVISOES[k]?.nome || 'Personalizada';
+  const letraTreino = nome => (String(nome).trim()[0] || '?').toUpperCase();
+  /** Ficha e treinos feitos do aluno, com cache por aluno. */
+  async function treinoDe(alunoId, recarregar = false) {
+    if (!recarregar && est.treino.has(alunoId)) return est.treino.get(alunoId);
+    const [{ data: fichas, error: e1 }, { data: feitos, error: e2 }] = await Promise.all([
+      db.from('fichas').select('*').eq('aluno_id', alunoId).order('inicio').order('criado_em'),
+      db.from('treinos_feitos').select('id,ficha_id,treino,data,exercicios,criado_em').eq('aluno_id', alunoId).order('data').order('criado_em').limit(2000)]);
+    if (e1 || e2) throw e1 || e2;
+    const r = { fichas, feitos, ativa: fichas.find(f => !f.encerrada_em) || null };
+    est.treino.set(alunoId, r); return r;
+  }
+  /** Calendário das últimas semanas: cada dia com a letra do treino feito. */
+  function calendarioTreinos(ficha, fr) {
+    if (!fr.porSemana.length) return null;
+    const dias = Array.from({ length: 7 }, (_, d) => letraDia(somaDias(ficha.inicio, d)));
+    return h('div', { class: 'cal-treino', role: 'table', 'aria-label': 'Treinos feitos por semana' },
+      h('div', { class: 'cal-linha cal-cab', role: 'row' }, h('span', { role: 'columnheader' }), dias.map(d => h('span', { role: 'columnheader' }, d))),
+      fr.porSemana.map(sm => h('div', { class: 'cal-linha', role: 'row' }, h('span', { class: 'cal-sem', role: 'rowheader' }, `Sem ${sm.semana}`),
+        sm.dias.map((ts, d) => { const dia = somaDias(ficha.inicio, (sm.semana - 1) * 7 + d), futuro = dia > hojeISO();
+          return h('span', { role: 'cell', class: 'cal-dia' + (ts.length ? ' feito' : '') + (futuro ? ' futuro' : ''), title: ts.length ? `${dataCurta(dia)}: ${ts.map(i => ficha.treinos[i]?.nome).join(', ')}` : dataCurta(dia) },
+            ts.length ? ts.map(i => letraTreino(ficha.treinos[i]?.nome)).join('') : h('span', { class: 'sr-only' }, futuro ? 'ainda não chegou' : 'sem treino')); }))));
+  }
+  function listaDaFicha(ficha) {
+    return h('div', { class: 'ficha-treinos' }, ficha.treinos.map(t => h('div', { class: 'ficha-treino' },
+      h('h4', { class: 'sub-titulo' }, t.nome, h('span', { class: 'sub' }, ` · ${t.exercicios.length} ${t.exercicios.length === 1 ? 'exercício' : 'exercícios'}`)),
+      t.exercicios.length ? h('ol', { class: 'lista-ex' }, t.exercicios.map(e => h('li', null, h('strong', null, e.nome), h('span', { class: 'sub' }, [T.prescricao(e), e.obs].filter(Boolean).join(' · ')))))
+        : h('p', { class: 'sub' }, 'Sem exercícios.'))));
+  }
+  const resumoFicha = f => `${T.OBJETIVOS[f.objetivo]?.nome || 'Ficha'} · ${nomeDivisao(f.divisao)}`;
+
+  /** Aba Treino na ficha do aluno (personal): ficha ativa, frequência, cargas anotadas e histórico. */
+  async function telaTreinoPersonal(a) {
+    const { fichas, feitos, ativa } = await treinoDe(a.id, true);
+    const hoje = hojeISO(), antigas = fichas.filter(f => f.encerrada_em).reverse();
+    const historico = antigas.length ? secao('Fichas anteriores', `${antigas.length} ${antigas.length === 1 ? 'ficha' : 'fichas'}`, false,
+      h('div', { class: 'lista-fichas' }, antigas.map(f => { const n = feitos.filter(x => x.ficha_id === f.id).length;
+        return h('div', { class: 'ficha-antiga' }, h('span', null, h('strong', null, resumoFicha(f)), h('span', { class: 'sub' }, `${dataCurta(f.inicio)} a ${dataCurta(f.encerrada_em)} · ${n} ${n === 1 ? 'treino feito' : 'treinos feitos'}`)),
+          h('button', { class: 'btn', type: 'button', onclick: () => { est.fichaBase = f.id; est.fichaRascunho = null; ir('ficha-nova-' + a.id); } }, 'Usar como base')); }))) : null;
+    if (!ativa) return [h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Treino'), h('p', { class: 'sub' }, `${primeiro(a.nome)} ainda não tem ficha de treino ativa.`)),
+      h('a', { class: 'btn primary', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = null; est.fichaRascunho = null; } }, '+ Montar ficha')),
+      h('p', { class: 'aviso' }, 'Escolha a divisão que fizer sentido para o aluno (corpo inteiro, superior/inferior, ABC, por dia da semana ou a sua). ' + (a.usuario_id ? 'O aluno vê a ficha no app e marca os treinos feitos.' : 'Quando o aluno tiver acesso ao app, ele vê a ficha e marca os treinos feitos.'))), historico];
+    const sem = T.semanaDaFicha(ativa, hoje), fr = T.frequencia(ativa, feitos, hoje), cg = T.cargasAnotadas(ativa, feitos);
+    const semTxt = !sem.comecou ? `começa em ${dataBR(ativa.inicio)}` : ativa.semanas ? (sem.terminou ? `passou das ${ativa.semanas} semanas previstas` : `semana ${sem.semana} de ${ativa.semanas}`) : `semana ${sem.semana}`;
+    const kpi = (v, k) => h('div', { class: 'kpi' }, h('span', { class: 'v' }, v), h('span', { class: 'k' }, k));
+    const encerrar = async () => {
+      if (!await confirmar({ titulo: 'Encerrar a ficha?', texto: 'Ela vai para as fichas anteriores, com os treinos feitos. O aluno deixa de vê-la como atual.', botao: 'Encerrar' })) return;
+      const { error } = await db.from('fichas').update({ encerrada_em: hoje }).eq('id', ativa.id);
+      if (error) return aviso('msgGlobal', erroBanco(error));
+      rotear();
+    };
+    return [h('section', { class: 'card' },
+      h('div', { class: 'card-topo' }, h('div', null, h('h2', null, resumoFicha(ativa)), h('p', { class: 'sub' }, `Desde ${dataBR(ativa.inicio)} · ${semTxt}${ativa.vezes_semana ? ` · meta ${ativa.vezes_semana}× por semana` : ''}`))),
+      sem.terminou ? h('p', { class: 'aviso' }, 'A duração prevista já passou: hora de trocar a ficha (e talvez reavaliar).') : null,
+      h('div', { class: 'kpis kpis-3' }, kpi(String(fr.total), fr.total === 1 ? 'treino feito' : 'treinos feitos'), fr.meta != null ? kpi(`${fr.meta}%`, 'da meta até hoje') : null, kpi(quandoFoi(fr.ultimo), 'último treino')),
+      calendarioTreinos(ativa, fr),
+      !a.usuario_id ? h('p', { class: 'sub' }, `${primeiro(a.nome)} ainda não tem acesso ao app: os treinos feitos aparecem aqui quando ele entrar e marcar.`) : null,
+      h('div', { class: 'linha' }, h('a', { class: 'btn', href: '#ficha-' + ativa.id, onclick: () => { est.fichaRascunho = null; } }, 'Editar ficha'),
+        h('a', { class: 'btn', href: '#ficha-nova-' + a.id, onclick: () => { est.fichaBase = ativa.id; est.fichaRascunho = null; } }, 'Nova ficha'),
+        h('button', { class: 'btn perigo-leve', type: 'button', onclick: encerrar }, 'Encerrar'))),
+      cg.length ? secao('Cargas anotadas', `${cg.length} ${cg.length === 1 ? 'exercício' : 'exercícios'}`, true, h('div', { class: 'lista-cargas' }, cg.map(c =>
+        h('div', { class: 'carga-linha' }, h('span', null, h('strong', null, c.nome), h('span', { class: 'sub' }, ` · ${c.treino} · ${quandoFoi(c.data)}`)),
+          h('span', { class: 'num' }, `${fmt(c.usada)} kg `, c.dif == null ? null : h('span', { class: 'chip ' + (c.dif > 0 ? 'bom' : c.dif < 0 ? 'atencao' : '') }, c.dif > 0 ? `↑ +${fmt(c.dif)} kg da ficha` : c.dif < 0 ? `↓ ${fmt(c.dif)} kg da ficha` : '= ficha')))))) : null,
+      secao('Treinos da ficha', `${ativa.treinos.length} ${ativa.treinos.length === 1 ? 'treino' : 'treinos'}`, false, listaDaFicha(ativa),
+        ativa.observacao ? h('p', { class: 'parecer' }, ativa.observacao) : null),
+      historico];
+  }
+
+  /** Montar ou editar a ficha (personal). O rascunho fica guardado enquanto o personal navega. */
+  async function telaFicha(a, ficha) {
+    const [avs, tr] = await Promise.all([avaliacoesDe(a.id), treinoDe(a.id)]);
+    const chave = ficha ? ficha.id : 'nova-' + a.id;
+    if (!est.fichaRascunho || est.fichaRascunho.chave !== chave) {
+      const base = !ficha && est.fichaBase ? tr.fichas.find(f => f.id === est.fichaBase) : null;
+      const r = T.rascunhoDaFicha(ficha || base, hojeISO());
+      if (base) r.inicio = hojeISO();
+      est.fichaRascunho = { chave, r, atual: 0 };
+    }
+    const R = est.fichaRascunho, r = R.r;
+    const rm = (zonasDoAluno(a, avs)?.exercicios) || [];
+    const msg = h('p', { class: 'msg', role: 'alert' });
+    const area = h('div', { class: 'ficha-editor' });
+    const listaEx = h('datalist', { id: 'listaExercicios' }, T.EXERCICIOS.map(e => h('option', { value: e.nome })));
+    const grupoDe = nome => T.EXERCICIOS.find(e => K.chaveExercicio(e.nome) === K.chaveExercicio(nome))?.grupo || '';
+    const inp = (rot, obj, k, attrs = {}) => h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, rot),
+      h('input', { value: obj[k] ?? '', autocomplete: 'off', ...attrs, oninput: ev => { obj[k] = ev.target.value; attrs.aoMudar?.(ev); } }));
+    function textoSugestao(e) {
+      const s = T.sugestaoCarga(e.nome, r.objetivo, rm, K.chaveExercicio);
+      if (!s) return '';
+      const c = Number(String(e.carga).replace(',', '.'));
+      const faixa = s.de != null ? `${T.OBJETIVOS[r.objetivo].nome}: ${kgCurto(s.de)}–${kgCurto(s.ate)} kg` : '';
+      return [`1RM ${kgCurto(Math.round(s.rm * 2) / 2)} kg`, c > 0 ? `${s.pct(c)}% do 1RM` : null, faixa].filter(Boolean).join(' · ');
+    }
+    function linhaExercicio(t, e, i) {
+      const sug = h('p', { class: 'sug-carga' }, textoSugestao(e));
+      const mover = d => { const j = i + d; if (j < 0 || j >= t.exercicios.length) return; [t.exercicios[i], t.exercicios[j]] = [t.exercicios[j], t.exercicios[i]]; desenhar(); };
+      return h('div', { class: 'ex-linha' },
+        h('div', { class: 'ex-topo' }, h('span', { class: 'ex-num', 'aria-hidden': 'true' }, String(i + 1)),
+          h('label', { class: 'campo ex-nome' }, h('span', { class: 'rotulo' }, `Exercício ${i + 1}`),
+            h('input', { value: e.nome, list: 'listaExercicios', maxlength: String(T.TREINO_LIMITES.nomeExercicio), autocomplete: 'off',
+              oninput: ev => { e.nome = ev.target.value; if (!e.grupo) e.grupo = grupoDe(e.nome); sug.textContent = textoSugestao(e); } })),
+          h('div', { class: 'ex-acoes' },
+            h('button', { class: 'btn ghost icone', type: 'button', 'aria-label': `Subir ${e.nome || 'exercício'}`, disabled: i === 0, onclick: () => mover(-1) }, '↑'),
+            h('button', { class: 'btn ghost icone', type: 'button', 'aria-label': `Descer ${e.nome || 'exercício'}`, disabled: i === t.exercicios.length - 1, onclick: () => mover(1) }, '↓'),
+            h('button', { class: 'btn ghost icone perigo-leve', type: 'button', 'aria-label': `Tirar ${e.nome || 'exercício'}`, onclick: () => { t.exercicios.splice(i, 1); desenhar(); } }, '✕'))),
+        h('div', { class: 'campos ex-campos' },
+          h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Grupo'),
+            h('select', { onchange: ev => { e.grupo = ev.target.value; } }, h('option', { value: '' }, '—'), T.GRUPOS.map(([k, n]) => h('option', { value: k, selected: e.grupo === k }, n)))),
+          inp('Séries', e, 'series', { inputMode: 'numeric' }), inp('Repetições', e, 'reps', { placeholder: T.OBJETIVOS[r.objetivo].reps || 'ex.: 10', maxlength: '20' }),
+          inp(['Carga ', h('span', { class: 'fraco' }, '(kg)')], e, 'carga', { inputMode: 'decimal', aoMudar: () => { sug.textContent = textoSugestao(e); } }),
+          inp(['Descanso ', h('span', { class: 'fraco' }, '(s)')], e, 'descanso', { inputMode: 'numeric' })),
+        sug,
+        inp(['Observação ', h('span', { class: 'fraco' }, '(opcional)')], e, 'obs', { placeholder: 'ex.: cadência 2-0-2, pegada fechada', maxlength: '200' }));
+    }
+    function desenhar() {
+      R.atual = Math.min(R.atual, r.treinos.length - 1);
+      const t = r.treinos[R.atual];
+      const novoEx = () => { const novo = { nome: '', grupo: '', series: 3, reps: T.OBJETIVOS[r.objetivo].reps || '', carga: '', descanso: 60, obs: '' }; t.exercicios.push(novo); desenhar();
+        area.querySelectorAll('.ex-nome input')[t.exercicios.length - 1]?.focus(); };
+      area.replaceChildren(
+        h('section', { class: 'card' },
+          h('h3', { class: 'titulo-secao' }, 'Objetivo'),
+          h('div', { class: 'filtros', role: 'group', 'aria-label': 'Objetivo da ficha' }, Object.entries(T.OBJETIVOS).map(([k, o]) =>
+            h('button', { type: 'button', 'aria-pressed': String(r.objetivo === k), onclick: () => { r.objetivo = k; desenhar(); } }, o.nome))),
+          h('div', { class: 'campos' },
+            h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Início'), h('input', { type: 'date', value: r.inicio, oninput: ev => { r.inicio = ev.target.value; } })),
+            inp(['Duração ', h('span', { class: 'fraco' }, '(semanas)')], r, 'semanas', { inputMode: 'numeric' }),
+            inp('Treinos por semana', r, 'vezes_semana', { inputMode: 'numeric' }))),
+        h('section', { class: 'card' },
+          h('h3', { class: 'titulo-secao' }, 'Divisão'),
+          h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Modelo'),
+            h('select', { onchange: ev => { r.divisao = ev.target.value; r.treinos = T.trocarDivisao(r.treinos, r.divisao); if (T.DIVISOES[r.divisao].vezes) r.vezes_semana = T.DIVISOES[r.divisao].vezes; R.atual = 0; desenhar(); } },
+              Object.entries(T.DIVISOES).map(([k, d]) => h('option', { value: k, selected: r.divisao === k }, `${d.nome} — ${d.desc}`)))),
+          h('p', { class: 'sub' }, 'Trocar o modelo mantém os exercícios já colocados. Os nomes dos treinos podem ser mudados à vontade.'),
+          h('div', { class: 'abas-treino', role: 'tablist', 'aria-label': 'Treinos da ficha' },
+            r.treinos.map((x, i) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(i === R.atual), onclick: () => { R.atual = i; desenhar(); } },
+              x.nome || `Treino ${i + 1}`, h('span', { class: 'sub' }, ` ${x.exercicios.length}`))),
+            r.treinos.length < T.TREINO_LIMITES.treinos ? h('button', { type: 'button', class: 'mais', 'aria-label': 'Acrescentar treino',
+              onclick: () => { r.treinos.push({ nome: `Treino ${r.treinos.length + 1}`, exercicios: [] }); if (r.divisao !== 'personalizada' && r.treinos.length > T.DIVISOES[r.divisao].treinos.length) r.divisao = 'personalizada'; R.atual = r.treinos.length - 1; desenhar(); } }, '+') : null)),
+        h('section', { class: 'card' },
+          h('div', { class: 'ex-cab' },
+            h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, 'Nome do treino'), h('input', { value: t.nome, maxlength: '40', autocomplete: 'off',
+              oninput: ev => { t.nome = ev.target.value; const b = area.querySelectorAll('.abas-treino [role=tab]')[R.atual]; if (b) b.firstChild.textContent = ev.target.value || `Treino ${R.atual + 1}`; } })),
+            r.treinos.length > 1 ? h('button', { class: 'btn perigo-leve', type: 'button', onclick: async () => {
+              if (t.exercicios.length && !await confirmar({ titulo: `Tirar o treino “${t.nome}”?`, texto: `Os ${t.exercicios.length} exercícios dele saem da ficha.`, botao: 'Tirar' })) return;
+              r.treinos.splice(R.atual, 1); desenhar(); } }, 'Tirar este treino') : null),
+          t.exercicios.length ? h('div', { class: 'ex-lista' }, t.exercicios.map((e, i) => linhaExercicio(t, e, i))) : h('p', { class: 'aviso' }, 'Nenhum exercício neste treino ainda.'),
+          h('div', { class: 'linha' },
+            h('button', { class: 'btn', type: 'button', onclick: () => abrirEscolhaExercicio(t, () => desenhar()) }, '+ Da lista'),
+            h('button', { class: 'btn', type: 'button', onclick: novoEx }, '+ Digitar exercício')),
+          rm.length ? h('p', { class: 'sub' }, `Com o mesmo nome do exercício da avaliação (${rm.map(x => x.nome).join(', ')}), o app mostra o 1RM e a faixa de carga do objetivo.`) : null),
+        h('section', { class: 'card' },
+          h('label', { class: 'campo' }, h('span', { class: 'rotulo' }, ['Observações para o aluno ', h('span', { class: 'fraco' }, '(opcional)')]),
+            h('textarea', { maxlength: '1000', oninput: ev => { r.observacao = ev.target.value; } }, r.observacao || ''))));
+    }
+    async function salvar(ev) {
+      ev.preventDefault();
+      const m = T.montarFicha(r);
+      if (m.erro) { msg.textContent = m.erro; msg.scrollIntoView({ block: 'center' }); return; }
+      const b = ev.submitter || form.querySelector('[type=submit]'); b.disabled = true; msg.textContent = '';
+      let error;
+      if (ficha) ({ error } = await db.from('fichas').update(m.dados).eq('id', ficha.id));
+      else {
+        const ativa = tr.ativa;
+        if (ativa) ({ error } = await db.from('fichas').update({ encerrada_em: hojeISO() }).eq('id', ativa.id));
+        if (!error) ({ error } = await db.from('fichas').insert({ aluno_id: a.id, ...m.dados }));
+        if (error && ativa) await db.from('fichas').update({ encerrada_em: null }).eq('id', ativa.id); // volta a anterior
+      }
+      b.disabled = false;
+      if (error) { msg.textContent = erroBanco(error); return; }
+      est.fichaRascunho = null; est.fichaBase = null; est.treino.delete(a.id);
+      ir('aluno-' + a.id + '-treino');
+    }
+    const form = h('form', { class: 'form-ficha', onsubmit: salvar, novalidate: true },
+      h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, `${ficha ? 'Editar ficha' : 'Nova ficha'} · ${a.nome}`),
+        h('p', { class: 'sub' }, ficha ? 'As mudanças valem a partir de agora; os treinos já feitos continuam no histórico.' : tr.ativa ? 'Ao salvar, a ficha atual vai para as fichas anteriores.' : 'Escolha o objetivo, a divisão e os exercícios. Só o nome do exercício é obrigatório.')))),
+      area, msg,
+      h('div', { class: 'form-pe' }, h('a', { class: 'btn', href: '#aluno-' + a.id + '-treino', onclick: () => { est.fichaRascunho = null; } }, 'Cancelar'),
+        h('button', { class: 'btn primary', type: 'submit' }, ficha ? 'Salvar ficha' : 'Salvar e enviar ao aluno')));
+    desenhar();
+    const voltar = h('div', { class: 'linha so-cel' }, h('a', { class: 'btn ghost', href: '#aluno-' + a.id + '-treino' }, '‹ ' + a.nome));
+    return [voltar, listaEx, form];
+  }
+
+  /** Escolher exercício da lista pronta: busca por nome e filtro por grupo; ou usa o texto como exercício novo. */
+  function abrirEscolhaExercicio(t, depois) {
+    let d = $('exDialog');
+    if (!d) {
+      d = h('dialog', { class: 'dialogo', id: 'exDialog', 'aria-labelledby': 'exDlgTitulo' });
+      document.body.append(d);
+    }
+    let grupo = '', busca = '';
+    const lista = h('div', { class: 'ex-escolha', role: 'list' });
+    const campo = h('input', { type: 'search', placeholder: 'Buscar ou digitar um exercício', 'aria-label': 'Buscar exercício', autocomplete: 'off', oninput: ev => { busca = ev.target.value; listar(); } });
+    const escolher = (nome, g) => { t.exercicios.push({ nome, grupo: g || '', series: 3, reps: T.OBJETIVOS[est.fichaRascunho.r.objetivo].reps || '', carga: '', descanso: 60, obs: '' }); d.close(); depois(); };
+    const chips = h('div', { class: 'filtros', role: 'group', 'aria-label': 'Grupo muscular' });
+    function listar() {
+      chips.replaceChildren(...[['', 'Todos'], ...T.GRUPOS].map(([k, n]) => h('button', { type: 'button', 'aria-pressed': String(grupo === k), onclick: () => { grupo = k; listar(); } }, n)));
+      const q = K.chaveExercicio(busca), ja = new Set(t.exercicios.map(e => K.chaveExercicio(e.nome)));
+      const achados = T.EXERCICIOS.filter(e => (!grupo || e.grupo === grupo) && (!q || K.chaveExercicio(e.nome).includes(q)));
+      lista.replaceChildren(...soElementos([
+        busca.trim() && !T.EXERCICIOS.some(e => K.chaveExercicio(e.nome) === q) ? h('button', { type: 'button', class: 'ex-op novo', onclick: () => escolher(busca.trim().slice(0, 60), grupo) }, `+ Usar “${busca.trim()}” como novo exercício`) : null,
+        ...achados.map(e => h('button', { type: 'button', class: 'ex-op', role: 'listitem', onclick: () => escolher(e.nome, e.grupo) },
+          h('span', null, e.nome), h('span', { class: 'sub' }, T.NOME_GRUPO[e.grupo] + (ja.has(K.chaveExercicio(e.nome)) ? ' · já está no treino' : '')))),
+        achados.length ? null : h('p', { class: 'sub' }, 'Nenhum exercício da lista com esse nome.')]));
+    }
+    d.replaceChildren(h('div', { class: 'dialogo-form' },
+      h('div', { class: 'dialogo-topo' }, h('h2', { id: 'exDlgTitulo' }, `Adicionar ao ${t.nome}`), h('button', { class: 'btn ghost', type: 'button', onclick: () => d.close() }, 'Fechar')),
+      campo, chips, lista));
+    listar(); d.showModal(); campo.focus();
+  }
+
+  /* ----- Aluno: Treino de hoje ----- */
+  const chaveRascunhoTreino = (f, i) => `treino:${f.id}:${i}:${hojeISO()}`;
+  function lerRascunhoTreino(f, i) { try { return JSON.parse(localStorage.getItem(chaveRascunhoTreino(f, i)) || '{}') || {}; } catch (_) { return {}; } }
+  function guardarRascunhoTreino(f, i, reg) { try { localStorage.setItem(chaveRascunhoTreino(f, i), JSON.stringify(reg)); } catch (_) { /* sem armazenamento */ } }
+  function apagarRascunhoTreino(f, i) { try { localStorage.removeItem(chaveRascunhoTreino(f, i)); } catch (_) { /* sem armazenamento */ } }
+  async function carregarTreinoAluno() {
+    try { est.aluno.treino = await treinoDe(est.aluno.eu.id, true); } catch (_) { est.aluno.treino = null; }
+  }
+  function cartaoTreinoInicio() {
+    const tr = est.aluno.treino, f = tr?.ativa;
+    if (!f) return null;
+    const i = T.proximoTreino(f, tr.feitos), t = f.treinos[i], feitoHoje = tr.feitos.some(x => x.ficha_id === f.id && x.data === hojeISO());
+    return h('a', { class: 'card cartao-treino', href: '#treino' },
+      h('span', { class: 'chat-av-ic', 'aria-hidden': 'true' }, ic(IC_PESO)),
+      h('span', { class: 'c-meio' }, h('strong', null, feitoHoje ? 'Treino de hoje feito ✓' : `Treino de hoje: ${t.nome}`),
+        h('span', { class: 'c-previa' }, feitoHoje ? `Próximo: ${t.nome}` : `${t.exercicios.length} ${t.exercicios.length === 1 ? 'exercício' : 'exercícios'} · toque para começar`)),
+      h('span', { 'aria-hidden': 'true', class: 'sub' }, '›'));
+  }
+  function alunoTreino() {
+    const tr = est.aluno.treino, f = tr?.ativa, { personal } = est.aluno;
+    const titulo = h('h2', { class: 'titulo-pagina' }, 'Treino');
+    if (!tr) return [titulo, h('p', { class: 'aviso' }, 'Não foi possível carregar a ficha agora. Verifique a internet e abra de novo.')];
+    if (!f) return [titulo, h('p', { class: 'aviso' }, `Você ainda não tem ficha de treino. Quando ${personal} montar a sua, ela aparece aqui.`),
+      h('a', { class: 'btn', href: '#mensagens' }, `Falar com ${personal}`)];
+    const hoje = hojeISO(), feitosFicha = tr.feitos.filter(x => x.ficha_id === f.id);
+    const sug = T.proximoTreino(f, tr.feitos);
+    if (est.aluno.treinoSel == null || est.aluno.treinoSel >= f.treinos.length) est.aluno.treinoSel = sug;
+    const i = est.aluno.treinoSel, t = f.treinos[i];
+    const sem = T.semanaDaFicha(f, hoje);
+    const jaHoje = feitosFicha.filter(x => x.treino === i && x.data === hoje).at(-1);
+    const reg = jaHoje ? { ...jaHoje.exercicios } : lerRascunhoTreino(f, i);
+    const ultimoDe = j => feitosFicha.filter(x => x.treino === j).at(-1)?.data;
+    const msg = h('p', { class: 'msg', role: 'status', 'aria-live': 'polite' });
+    const nFeitos = () => t.exercicios.filter((_, k) => reg[k]?.feito).length;
+    const barra = h('div', { class: 'treino-prog-barra' }), conta = h('span', { class: 'num' });
+    const atualizarBarra = () => { const n = nFeitos(); barra.style.width = `${t.exercicios.length ? n / t.exercicios.length * 100 : 0}%`; conta.textContent = `${n} de ${t.exercicios.length}`; };
+    const seletor = f.treinos.length > 1 ? h('div', { class: 'seletor seletor-treino', role: 'group', 'aria-label': 'Escolher o treino' }, f.treinos.map((x, j) => {
+      const u = ultimoDe(j);
+      return h('button', { type: 'button', 'aria-pressed': String(j === i), onclick: () => { est.aluno.treinoSel = j; rotearAluno(); } },
+        h('span', null, x.nome), h('span', { class: 'sub' + (j === sug ? ' sugerido' : '') }, j === sug ? 'sugerido hoje' : u ? `feito ${quandoFoi(u)}` : 'ainda não feito'));
+    })) : null;
+    const itens = t.exercicios.map((e, k) => {
+      const r = reg[k] || {};
+      const caixa = h('input', { type: 'checkbox', checked: !!r.feito, disabled: !!jaHoje, onchange: ev => { reg[k] = { ...reg[k], feito: ev.target.checked }; guardarRascunhoTreino(f, i, reg); item.classList.toggle('feito', ev.target.checked); atualizarBarra(); } });
+      const carga = h('input', { inputMode: 'decimal', autocomplete: 'off', value: r.carga ?? '', placeholder: e.carga != null ? fmt(e.carga) : '—', disabled: !!jaHoje, 'aria-label': `Carga que você usou no ${e.nome} (kg)`,
+        oninput: ev => { const v = Number(String(ev.target.value).replace(',', '.')); reg[k] = { ...reg[k] }; if (ev.target.value.trim() && Number.isFinite(v)) reg[k].carga = v; else delete reg[k].carga; guardarRascunhoTreino(f, i, reg); } });
+      const item = h('li', { class: 'ex-feito' + (r.feito ? ' feito' : '') },
+        h('label', { class: 'ex-marca' }, caixa, h('span', { class: 'c-meio' }, h('strong', null, e.nome), h('span', { class: 'c-previa' }, T.prescricao(e) || 'Como combinado com o personal'), e.obs ? h('span', { class: 'sub' }, e.obs) : null)),
+        h('label', { class: 'ex-carga' }, h('span', { class: 'sub' }, 'Usei (kg)'), carga));
+      return item;
+    });
+    async function concluir() {
+      const exercicios = {};
+      t.exercicios.forEach((_, k) => { const r = reg[k]; if (r && (r.feito || r.carga != null)) exercicios[k] = { feito: !!r.feito, ...(r.carga != null ? { carga: Math.round(r.carga * 10) / 10 } : {}) }; });
+      if (!Object.values(exercicios).some(x => x.feito)) { msg.textContent = 'Marque os exercícios que você fez antes de concluir.'; return; }
+      btn.disabled = true;
+      const { error } = await db.from('treinos_feitos').insert({ ficha_id: f.id, treino: i, data: hoje, exercicios });
+      btn.disabled = false;
+      if (error) { msg.textContent = erroBanco(error); return; }
+      apagarRascunhoTreino(f, i);
+      await carregarTreinoAluno(); est.aluno.treinoSel = null; est.aluno.recemConcluido = t.nome; rotearAluno();
+    }
+    async function desfazer() {
+      if (!await confirmar({ titulo: 'Desfazer o treino de hoje?', texto: `O registro do ${t.nome} de hoje sai do histórico. As marcações voltam para você corrigir.`, botao: 'Desfazer' })) return;
+      const { error } = await db.from('treinos_feitos').delete().eq('id', jaHoje.id);
+      if (error) { msg.textContent = erroBanco(error); return; }
+      guardarRascunhoTreino(f, i, jaHoje.exercicios); await carregarTreinoAluno(); est.aluno.treinoSel = i; rotearAluno();
+    }
+    const btn = h('button', { class: 'btn primary full', type: 'button', onclick: concluir }, `Concluir ${t.nome}`);
+    const parabens = est.aluno.recemConcluido; est.aluno.recemConcluido = null;
+    const ultimos = [...feitosFicha].reverse().slice(0, 5);
+    atualizarBarra();
+    return [
+      h('div', { class: 'treino-cab' }, h('p', { class: 'sub' }, `${resumoFicha(f)}${sem?.comecou && f.semanas ? ` · semana ${Math.min(sem.semana, f.semanas)} de ${f.semanas}` : ''}`), h('h2', { class: 'titulo-pagina' }, 'Treino de hoje')),
+      parabens ? h('p', { class: 'aviso ok' }, `${parabens} concluído. Bom trabalho!`) : null,
+      seletor,
+      t.exercicios.length ? h('div', { class: 'treino-prog', 'aria-hidden': 'true' }, h('div', { class: 'treino-prog-trilho' }, barra), conta) : null,
+      jaHoje ? h('p', { class: 'aviso ok' }, `Você concluiu o ${t.nome} hoje.`) : null,
+      t.exercicios.length ? h('ol', { class: 'lista-treino' }, itens) : h('p', { class: 'aviso' }, 'Este treino ainda não tem exercícios.'),
+      msg,
+      t.exercicios.length ? (jaHoje ? h('button', { class: 'btn full', type: 'button', onclick: desfazer }, 'Desfazer o treino de hoje') : btn) : null,
+      f.observacao ? h('section', { class: 'card recado' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, f.observacao)) : null,
+      ultimos.length ? secao('Últimos treinos', `${feitosFicha.length} ${feitosFicha.length === 1 ? 'treino feito' : 'treinos feitos'} nesta ficha`, false,
+        h('ul', { class: 'lista-simples' }, ultimos.map(x => h('li', null, h('strong', null, f.treinos[x.treino]?.nome || 'Treino'), h('span', { class: 'sub' }, ` · ${quandoFoi(x.data)} · ${Object.values(x.exercicios || {}).filter(y => y.feito).length} exercícios`))))) : null];
   }
 
   /* ----- Mensagens: conversa do aluno com o personal (1.0.0) ----- */
@@ -1411,7 +1740,7 @@ function iniciar() {
     Object.assign(est, { papel: null, usuario: null }); // antes de fechar: fechar o guia ao sair não conta como visto
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     Object.assign(est, { papel: null, usuario: null, personal: null, alunos: [], rascunho: null, rascunhoChave: null });
-    est.avs.clear(); est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
+    est.avs.clear(); est.treino.clear(); est.fichaRascunho = null; est.fichaBase = null; est.aluno = null; $('principal').replaceChildren(); $('areaAluno').replaceChildren(); $('listaAlunos').replaceChildren();
     $('navAluno').classList.add('hidden'); document.body.classList.remove('com-nav'); menuConta(false);
     est.chat = { resumo: new Map(), aberto: null }; $('msgBtn').classList.add('hidden'); atualizarBadges();
     $('senha').value = ''; mostrar('loginView');

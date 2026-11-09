@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const A = require('../app.js');
 const fs = require('node:fs'), path = require('node:path');
-const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-09' };
+const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-10' };
 
 assert.equal(A.TERMO_VERSAO, TERMO_VERSAO, 'mesma versão do termo que a função registrar-aluno');
 assert.equal(A.hojeISO(new Date(2026, 0, 5)), '2026-01-05');
@@ -259,6 +259,17 @@ assert.equal(A.avisoInstalacao({ ua: UA_PC }), null, 'computador: nada');
 assert.equal(A.avisoInstalacao({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/18.0 Safari/605.1.15', toques: 5 }), 'ios', 'iPad novo');
 for (const k of ['android', 'android-menu', 'ios']) assert.ok(A.TEXTO_INSTALAR[k]?.length > 20, k);
 for (const id of ['instalarAviso', 'instalarTexto', 'instalarBtn', 'instalarFechar']) assert.ok(htmlTut.includes(`id="${id}"`), `index.html tem #${id}`);
+// 1.1.0: rotas das fichas de treino
+{
+  const id = '5f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
+  assert.deepEqual(A.lerRota('#aluno-' + id + '-treino'), { tela: 'aluno', id, aba: 'treino' });
+  assert.deepEqual(A.lerRota('#ficha-nova-' + id), { tela: 'fichaNova', id });
+  assert.deepEqual(A.lerRota('#ficha-' + id), { tela: 'ficha', id });
+  assert.deepEqual(A.lerRota('#treino'), { tela: 'treino' });
+  assert.deepEqual(A.lerRota('#ficha-xyz'), { tela: 'inicio' });
+  assert.ok(A.PASSOS_TUTORIAL_PERSONAL.some(p => /Fichas de treino/.test(p.titulo)) && A.PASSOS_TUTORIAL_ALUNO.some(p => p.titulo === 'Treino'), 'guia explica as fichas');
+}
+
 // 1.0.0: mensagens
 {
   const id = '5f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f';
