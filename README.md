@@ -2,6 +2,14 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.5.0 — Sugestões do professor (parte 1)
+
+- **Teste de força em qualquer exercício**: na etapa Força, além do supino e do leg press, o botão **+ Outro exercício** acrescenta até 8 exercícios escolhidos pelo personal (com sugestões como agachamento, remada e puxada, ou qualquer nome). O app calcula o 1RM (Epley) e o 1RM ÷ peso. Esses exercícios não têm tabela de classificação; a comparação entre avaliações junta pelo nome (sem diferenciar acento ou maiúscula).
+- **FC máxima por Tanaka** (208 − 0,7 × idade), no lugar de 220 − idade. Vale também para as avaliações antigas, porque o resultado é calculado na hora; a FC de reserva acompanha.
+- **Etnia retirada** do cadastro do aluno, da lista e do banco (menos dado pessoal sensível). A massa muscular (Lee) passa a usar o valor neutro: para quem estava como negra ou asiática, o resultado muda em +1,1 kg ou −2 kg nas avaliações antigas.
+- Aluno de exemplo ganhou o agachamento livre nas 3 avaliações.
+- Banco: migrações `forca_outros_exercicios` (aplicar antes de publicar o site) e `remove_etnia` (aplicar depois).
+
 ## Versão 0.4.2 — Sugestão de instalar no celular
 
 - Sempre que o app é aberto no navegador do celular, aparece embaixo um aviso para instalá-lo na tela inicial. No Android, o botão **Instalar** faz tudo em um toque (ou o aviso explica o caminho pelo menu ⋮). No iPhone, o aviso mostra o caminho: Compartilhar → "Adicionar à Tela de Início".
@@ -40,7 +48,7 @@ App para o personal trainer registrar avaliações físicas, acompanhar a evolu�
 
 ## Versão 0.1.0 — Etapa 1: avaliação e evolução
 
-- **Alunos:** cadastro com sexo, nascimento e etnia (usada na fórmula de massa muscular), busca e edição.
+- **Alunos:** cadastro com sexo e nascimento, busca e edição.
 - **Nova avaliação em 6 etapas** (básico, exames, perímetros, dobras, força, parecer), com gordura e massa muscular calculadas enquanto se preenche. Altura aceita em metros ou centímetros; dobras com até duas medidas e média automática.
 - **Resultado completo:** gordura (Faulkner), massa muscular (Lee et al., 2000), massa gorda e magra em kg, somatórios de dobras, proporcionalidade (Phantom) em régua neutra, 1RM (Epley) com força relativa no supino, FC máxima e de reserva, pressão arterial classificada pela Diretriz Brasileira de 2020 e exames com referência. Botão para imprimir ou salvar em PDF.
 - **Evolução** em gráficos (peso, gordura, massa muscular, soma de dobras, cintura e 1RM) e **comparação** entre quaisquer duas avaliações.

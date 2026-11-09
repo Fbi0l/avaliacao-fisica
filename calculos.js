@@ -1,13 +1,11 @@
 /* Cálculos da avaliação física. Funções puras: recebem as medidas e devolvem os resultados.
    Nada aqui acessa a tela ou o banco; tudo é testado em tests/calculos.cjs.
    Referências: Lee et al. (2000) massa muscular; Faulkner (1968) e Petroski (1995) % de gordura; Ross e Wilson (1974)
-   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
+   modelo Phantom; Epley (1985) 1RM; ACSM (1998) força no leg press; Tanaka, Monahan e Seals (2001) FC máxima; Diretriz Brasileira de Hipertensão (2020); Heyward (1991) faixas de gordura. */
 'use strict';
 
 const PERIMETROS = [['bracoD', 'Braço D'], ['bracoE', 'Braço E'], ['antD', 'Antebraço D'], ['antE', 'Antebraço E'], ['torax', 'Tórax'], ['cintura', 'Cintura'], ['abdomen', 'Abdômen'], ['quadril', 'Quadril'], ['coxaSupD', 'Coxa superior D'], ['coxaSupE', 'Coxa superior E'], ['coxaMedD', 'Coxa média D'], ['coxaMedE', 'Coxa média E'], ['pantD', 'Panturrilha D'], ['pantE', 'Panturrilha E']];
 const DOBRAS = [['triceps', 'Tríceps'], ['subesc', 'Subescapular'], ['biceps', 'Bíceps'], ['iliaca', 'Suprailíaca'], ['supraesp', 'Supraespinhal'], ['abdominal', 'Abdominal'], ['coxa', 'Coxa'], ['panturrilha', 'Panturrilha']];
-const ETNIAS = { branca: 0, negra: 1.1, asiatica: -2 }; // ajuste da fórmula de Lee
-const ROTULO_ETNIA = { branca: 'Branca', negra: 'Negra', asiatica: 'Asiática' };
 
 const ok = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -97,11 +95,12 @@ const EQUACOES_GORDURA = {
 };
 const equacaoDe = av => (av && EQUACOES_GORDURA[av.equacao_gordura]) ? av.equacao_gordura : 'faulkner';
 
-/** Massa muscular esquelética (kg) por Lee et al. (2000). Perímetros em cm corrigidos pelas dobras (mm). */
-function massaMuscularLee({ alturaM, sexo, idade, etnia, bracoD, coxaMedD, pantD, triceps, coxa, panturrilha }) {
+/** Massa muscular esquelética (kg) por Lee et al. (2000). Perímetros em cm corrigidos pelas dobras (mm).
+    Sem o ajuste por etnia da fórmula original (retirado a pedido do professor em 09/11/2026): usa o valor neutro, 0. */
+function massaMuscularLee({ alturaM, sexo, idade, bracoD, coxaMedD, pantD, triceps, coxa, panturrilha }) {
   if (![alturaM, idade, bracoD, coxaMedD, pantD, triceps, coxa, panturrilha].every(ok)) return null;
   const cag = bracoD - Math.PI * triceps / 10, ctg = coxaMedD - Math.PI * coxa / 10, ccg = pantD - Math.PI * panturrilha / 10;
-  return alturaM * (0.00744 * cag * cag + 0.00088 * ctg * ctg + 0.00441 * ccg * ccg) + 2.4 * (sexo === 'M' ? 1 : 0) - 0.048 * idade + (ETNIAS[etnia] ?? 0) + 7.8;
+  return alturaM * (0.00744 * cag * cag + 0.00088 * ctg * ctg + 0.00441 * ccg * ccg) + 2.4 * (sexo === 'M' ? 1 : 0) - 0.048 * idade + 7.8;
 }
 
 /** 1RM estimado por Epley. Uma repetição = a própria carga. */
@@ -109,6 +108,16 @@ function umRM(carga, reps) {
   if (!ok(carga) || !ok(reps) || carga <= 0 || reps < 1) return null;
   return reps === 1 ? carga : carga * (1 + reps / 30);
 }
+
+/** FC máxima estimada por Tanaka, Monahan e Seals (2001): 208 − 0,7 × idade, arredondada. */
+function fcMaximaTanaka(idade) { return ok(idade) ? Math.round(208 - 0.7 * idade) : null; }
+
+/** Outros exercícios do teste de força, escolhidos pelo personal: sem tabela de classificação, só 1RM e 1RM ÷ peso. */
+const MAX_OUTROS_EXERCICIOS = 8;
+const SUGESTOES_EXERCICIOS = ['Agachamento livre', 'Remada curvada', 'Puxada frontal', 'Desenvolvimento', 'Rosca direta', 'Tríceps testa',
+  'Cadeira extensora', 'Mesa flexora', 'Stiff', 'Levantamento terra', 'Supino inclinado', 'Crucifixo'];
+/** Nome do exercício para comparar entre avaliações: sem acento, minúsculo, espaços simples. */
+const chaveExercicio = nome => String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 // Força relativa no supino (1RM ÷ peso): limites inferiores de Excelente, Muito bom, Médio e Fraco,
 // por faixa de idade (<20, 20-29, 30-39, 40-49, 50-59, 60+).
@@ -169,7 +178,7 @@ function classeExame(chave, valor) {
 
 /**
  * Resultados de uma avaliação.
- * aluno: { sexo: 'F'|'M', nascimento: 'AAAA-MM-DD', etnia }
+ * aluno: { sexo: 'F'|'M', nascimento: 'AAAA-MM-DD' }
  * av: linha da tabela avaliacoes ({ data, peso, altura, fc_repouso, pas, pad, glicose, …, perimetros, dobras, forca }).
  * Valores ausentes viram null nos resultados que dependem deles.
  */
@@ -183,11 +192,15 @@ function calcular(aluno, av) {
   const equacaoGordura = equacaoDe(av);
   const gordura = equacaoGordura === 'petroski' ? gorduraPetroski(d, aluno.sexo, idade, peso, alturaCm) : gorduraFaulkner(d);
   const massaGorda = ok(gordura) ? peso * gordura / 100 : null;
-  const massaMuscular = massaMuscularLee({ alturaM: altura, sexo: aluno.sexo, idade, etnia: aluno.etnia, bracoD: per.bracoD, coxaMedD: per.coxaMedD, pantD: per.pantD, triceps: d.triceps, coxa: d.coxa, panturrilha: d.panturrilha });
+  const massaMuscular = massaMuscularLee({ alturaM: altura, sexo: aluno.sexo, idade, bracoD: per.bracoD, coxaMedD: per.coxaMedD, pantD: per.pantD, triceps: d.triceps, coxa: d.coxa, panturrilha: d.panturrilha });
   const zMuscular = ok(massaMuscular) ? zPhantom(massaMuscular, alturaCm, ...PHANTOM_MUSCULO, 3) : null;
-  const fcMaxima = 220 - idade;
+  const fcMaxima = fcMaximaTanaka(idade);
   const forca = av.forca || {};
   const sup = umRM(forca.supino?.carga, forca.supino?.reps), leg = umRM(forca.leg_press?.carga, forca.leg_press?.reps);
+  const outros = (Array.isArray(forca.outros) ? forca.outros : []).map(o => {
+    const rm = umRM(o.carga, o.reps);
+    return { nome: o.nome, carga: o.carga, reps: o.reps, rm, relativo: ok(rm) ? rm / peso : null };
+  });
   const zPerimetros = {}, zDobras = {};
   for (const [k, [m, s]] of Object.entries(PHANTOM_PERIMETROS)) if (ok(per[k])) zPerimetros[k] = zPhantom(per[k], alturaCm, m, s);
   for (const [k, [m, s]] of Object.entries(PHANTOM_DOBRAS)) if (ok(d[k])) zDobras[k] = zPhantom(d[k], alturaCm, m, s);
@@ -200,15 +213,16 @@ function calcular(aluno, av) {
     massaGorda, massaMagra: ok(massaGorda) ? peso - massaGorda : null,
     massaMuscular, zMuscular, classeMuscular: classeMassaMuscular(zMuscular),
     perimetroMuscularBraco: ok(per.bracoD) && ok(d.triceps) ? per.bracoD - Math.PI * d.triceps / 10 : null,
-    fcMaxima, fcReserva: ok(av.fc_repouso) ? fcMaxima - av.fc_repouso : null,
+    fcMaxima, fcReserva: ok(av.fc_repouso) && ok(fcMaxima) ? fcMaxima - av.fc_repouso : null,
     pressao: classePressao(av.pas, av.pad),
     supino1RM: sup, supinoRelativo: ok(sup) ? sup / peso : null, classeSupino: ok(sup) ? classeSupino(sup / peso, aluno.sexo, idade) : null,
     legPress1RM: leg, legPressRelativo: ok(leg) ? leg / peso : null, classeLegPress: ok(leg) ? classeLegPress(leg / peso, aluno.sexo, idade) : null,
+    outrosExercicios: outros,
     zPerimetros, zDobras
   };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { PERIMETROS, DOBRAS, ETNIAS, ROTULO_ETNIA, EXAMES, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
+  module.exports = { PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, fcMaximaTanaka, PHANTOM_PERIMETROS, PHANTOM_DOBRAS, idadeEm, mediaDobra, lerNumero, zPhantom, classeProporcao,
     classeMassaMuscular, classeGordura, gorduraFaulkner, gorduraPetroski, EQUACOES_GORDURA, equacaoDe, massaMuscularLee, umRM, classeSupino, classeLegPress, classePressao, classeExame, calcular };
 }

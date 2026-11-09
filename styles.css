@@ -155,6 +155,10 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 .campo input,.campo select,.campo textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:16px;font-weight:400;min-width:0}
 .campo textarea{min-height:140px;resize:vertical;line-height:1.5}
 .campo .fraco{color:var(--muted)}
+.exercicio{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;margin:0 0 10px}
+.exercicio>.btn{min-height:40px}
+.outros-titulo{margin-top:22px}
+@media (max-width:600px){.exercicio{grid-template-columns:1fr 1fr;padding-bottom:10px;border-bottom:1px solid var(--line)}.exercicio>.campo:first-child{grid-column:1/-1}.exercicio>.btn{grid-column:1/-1;min-height:44px}}
 .dobra{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr 1fr 64px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .dobra input{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:16px;min-width:0}
 .dobra .media{font-family:var(--mono);text-align:right}

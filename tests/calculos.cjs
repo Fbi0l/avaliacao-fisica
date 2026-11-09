@@ -20,14 +20,14 @@ assert.equal(C.mediaDobra([19, null]), 19); assert.equal(C.mediaDobra([]), null)
 perto(C.gorduraFaulkner({ triceps: 22, subesc: 19, iliaca: 21, abdominal: 24 }), 18.941, 1e-9, 'Faulkner');
 assert.equal(C.gorduraFaulkner({ triceps: 22, subesc: 19, iliaca: 21 }), null, 'falta dobra');
 
-// Lee (2000), mulher branca, 32 anos, 1,65 m:
+// Lee (2000), mulher, 32 anos, 1,65 m (sem ajuste por etnia: valor neutro):
 // CAG = 29 − π·2,2 = 22,0885; CTG = 55,6 − π·2,7 = 47,1177; CCG = 36,4 − π·1,7 = 31,0593
 // 1,65 × (0,00744·487,90 + 0,00088·2220,08 + 0,00441·964,68) − 0,048·32 + 7,8 = 22,497 kg
-const lee = { alturaM: 1.65, sexo: 'F', idade: 32, etnia: 'branca', bracoD: 29, coxaMedD: 55.6, pantD: 36.4, triceps: 22, coxa: 27, panturrilha: 17 };
+const lee = { alturaM: 1.65, sexo: 'F', idade: 32, bracoD: 29, coxaMedD: 55.6, pantD: 36.4, triceps: 22, coxa: 27, panturrilha: 17 };
 perto(C.massaMuscularLee(lee), 22.497, 0.01, 'Lee mulher');
 perto(C.massaMuscularLee({ ...lee, sexo: 'M' }) - C.massaMuscularLee(lee), 2.4, 1e-9, 'homem soma 2,4 kg');
-perto(C.massaMuscularLee({ ...lee, etnia: 'negra' }) - C.massaMuscularLee(lee), 1.1, 1e-9, 'etnia negra soma 1,1 kg');
-perto(C.massaMuscularLee({ ...lee, etnia: 'asiatica' }) - C.massaMuscularLee(lee), -2, 1e-9, 'etnia asiática tira 2 kg');
+perto(C.massaMuscularLee({ ...lee, etnia: 'negra' }), C.massaMuscularLee(lee), 1e-9, 'etnia não muda mais o resultado (retirada em 0.5.0)');
+assert.equal(C.ETNIAS, undefined, 'etnia não existe mais nos cálculos');
 assert.equal(C.massaMuscularLee({ ...lee, pantD: null }), null, 'falta perímetro');
 
 // Phantom: cintura 71 cm, 1,65 m → (71 · 170,18/165 − 71,91)/4,45 = 0,296
@@ -79,7 +79,7 @@ assert.equal(C.classeExame('glicose', 99).texto, 'Normal'); assert.equal(C.class
 assert.equal(C.classeExame('hdl', 40).texto, 'Baixo'); assert.equal(C.classeExame('ldl', null), null);
 
 // Avaliação completa (formato da tabela avaliacoes)
-const aluna = { sexo: 'F', nascimento: '1994-03-12', etnia: 'branca' };
+const aluna = { sexo: 'F', nascimento: '1994-03-12', };
 const av = {
   data: '2026-10-14', peso: '63.80', altura: '1.65', fc_repouso: 66, pas: 116, pad: 76,
   perimetros: { bracoD: 29, cintura: 71, coxaMedD: 55.6, pantD: 36.4 },
@@ -94,7 +94,10 @@ perto(r.massaGorda, 63.8 * 0.18941, 1e-9, 'massa gorda'); perto(r.massaMagra, 63
 perto(r.massaMuscular, 22.497, 0.01, 'massa muscular');
 assert.equal(r.somaDobras, 22 + 19 + 9 + 21 + 12 + 24 + 27 + 17);
 assert.equal(r.dobrasPerifericas, 22 + 9 + 27 + 17); assert.equal(r.dobrasCentrais, 19 + 21 + 12 + 24);
-assert.equal(r.fcMaxima, 188); assert.equal(r.fcReserva, 122);
+// FC máxima por Tanaka (2001): 208 − 0,7 × 32 = 185,6 → 186; reserva 186 − 66 = 120
+assert.equal(r.fcMaxima, 186); assert.equal(r.fcReserva, 120);
+assert.equal(C.fcMaximaTanaka(20), 194); assert.equal(C.fcMaximaTanaka(60), 166); assert.equal(C.fcMaximaTanaka(null), null);
+assert.deepEqual(r.outrosExercicios, [], 'sem outros exercícios');
 assert.equal(r.pressao.texto, 'Ótima');
 perto(r.supino1RM, 48.1333, 0.001, '1RM'); assert.equal(r.classeSupino.texto, 'Excelente');
 assert.equal(r.legPress1RM, null, 'leg press não medido');
@@ -116,7 +119,7 @@ assert.equal(parcial.classeGordura, null); assert.equal(parcial.pressao, null);
   assert.equal(C.gorduraPetroski(d4(15), 'F', 30, null, 165), null, 'mulher sem peso');
   assert.ok(C.gorduraPetroski(d4(20), 'M', 30) > C.gorduraPetroski(d4(10), 'M', 30), 'mais dobra, mais gordura');
   // Escolha por avaliação; sem escolha (avaliações antigas), Faulkner
-  const aluna = { sexo: 'F', nascimento: '1996-01-01', etnia: 'branca' };
+  const aluna = { sexo: 'F', nascimento: '1996-01-01', };
   const av = { data: '2026-01-02', peso: 60, altura: 1.65, perimetros: {}, dobras: { subesc: [15], triceps: [15], iliaca: [15], panturrilha: [15], abdominal: [20] } };
   assert.equal(C.calcular(aluna, av).equacaoGordura, 'faulkner');
   assert.ok(Math.abs(C.calcular(aluna, av).gordura - (0.153 * 65 + 5.783)) < 1e-9);
@@ -138,4 +141,16 @@ assert.equal(C.classeLegPress(2.2, 'M', 17).texto, 'Excelente', 'menor de 20 usa
 assert.equal(C.classeLegPress(null, 'M', 30), null);
 for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for (const r of [0.3, 0.9, 1.2, 1.5, 1.8, 2.5])
   assert.ok(C.classeLegPress(r, sexo, idade)?.texto, `sem classe: ${sexo} ${idade} ${r}`);
-console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força, faixas de gordura, pressão e exames.');
+// Outros exercícios do teste de força: 1RM e 1RM ÷ peso, sem classificação
+{
+  const ro = C.calcular(aluna, { ...av, forca: { ...av.forca, outros: [{ nome: 'Agachamento livre', carga: 60, reps: 6 }, { nome: 'Rosca direta', carga: 14, reps: 1 }] } });
+  assert.equal(ro.outrosExercicios.length, 2);
+  perto(ro.outrosExercicios[0].rm, 72, 1e-9, 'Epley no agachamento: 60 × (1 + 6/30)');
+  perto(ro.outrosExercicios[0].relativo, 72 / 63.8, 1e-9, '1RM ÷ peso');
+  assert.equal(ro.outrosExercicios[1].rm, 14, 'uma repetição = a própria carga');
+  perto(ro.supino1RM, 48.1333, 0.001, 'supino continua igual');
+  assert.equal(C.chaveExercicio('  Agachamento   LIVRE '), 'agachamento livre');
+  assert.equal(C.chaveExercicio('Rosca  Diréta'), C.chaveExercicio('rosca direta'), 'compara sem acento nem maiúscula');
+  assert.deepEqual(C.calcular(aluna, { ...av, forca: { outros: 'x' } }).outrosExercicios, [], 'formato inválido não quebra');
+}
+console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, faixas de gordura, pressão e exames.');

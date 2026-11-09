@@ -29,7 +29,7 @@ recusa "cadastro não apaga alunos" "$(q -d $B -c "begin; set local role service
 confere "papel do personal" "$(como authenticated $P1 'select public.meu_papel()')" "personal"
 confere "usuário sem cadastro não tem papel" "$(como authenticated $P2 "select coalesce(public.meu_papel(), 'nenhum')")" "nenhum"
 
-ALUNA="$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento, etnia) values ('Mariana Costa','F','1994-03-12','branca') returning id")"
+ALUNA="$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento) values ('Mariana Costa','F','1994-03-12') returning id")"
 [[ "$ALUNA" =~ ^[0-9a-f-]{36}$ ]] && ok "personal cadastra aluno" || erro "cadastrar aluno" "$ALUNA"
 recusa "quem não é personal não cadastra aluno" "$(como authenticated $P2 "insert into public.alunos (nome, sexo, nascimento) values ('X','M','1990-01-01') returning id")"
 recusa "visitante sem login não lê alunos" "$(como anon 00000000-0000-0000-0000-000000000000 'select count(*) from public.alunos')"
@@ -42,6 +42,17 @@ recusa "medida desconhecida é recusada" "$(como authenticated $P1 "insert into 
 recusa "medida fora da faixa é recusada" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, perimetros) values ('$ALUNA',60,1.6,'{\"cintura\":900}') returning id")"
 recusa "dobra com texto é recusada" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, dobras) values ('$ALUNA',60,1.6,'{\"triceps\":[\"20\"]}') returning id")"
 recusa "repetições quebradas são recusadas" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"supino\":{\"carga\":40,\"reps\":2.5}}') returning id")"
+# 0.5.0: outros exercícios no teste de força e etnia retirada
+confere "etnia não existe mais" "$(q -d $B -c "select count(*) from information_schema.columns where table_name = 'alunos' and column_name = 'etnia'")" "0"
+F1='{"supino":{"carga":40,"reps":8},"outros":[{"nome":"Agachamento livre","carga":60,"reps":6},{"nome":"Rosca direta","carga":14.5,"reps":1}]}'
+confere "aceita outros exercícios" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'$F1') returning jsonb_array_length(forca->'outros')")" "2"
+q -d $B -c "delete from public.avaliacoes where forca ? 'outros'" # o teste acima não conta nas próximas verificações
+recusa "recusa exercício sem nome" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\" \",\"carga\":50,\"reps\":5}]}') returning id")"
+recusa "recusa exercício repetido" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\"Remada\",\"carga\":50,\"reps\":5},{\"nome\":\"remada\",\"carga\":40,\"reps\":5}]}') returning id")"
+recusa "recusa carga fora da faixa" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\"Remada\",\"carga\":5000,\"reps\":5}]}') returning id")"
+recusa "recusa campo estranho no exercício" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":[{\"nome\":\"Remada\",\"carga\":50,\"reps\":5,\"x\":1}]}') returning id")"
+recusa "recusa mais de 8 exercícios" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,jsonb_build_object('outros',(select jsonb_agg(jsonb_build_object('nome','Ex '||i,'carga',10,'reps',5)) from generate_series(1,9) i))) returning id")"
+recusa "recusa outros que não é lista" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, forca) values ('$ALUNA',60,1.6,'{\"outros\":{\"nome\":\"Remada\"}}') returning id")"
 recusa "peso absurdo é recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura) values ('$ALUNA',600,1.6) returning id")"
 confere "avaliação antiga fica com Faulkner" "$(q -d $B -c "select equacao_gordura from public.avaliacoes where id='$AVAL'")" "faulkner"
 confere "personal troca a equação para Petroski" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='petroski' where id='$AVAL' returning equacao_gordura")" "petroski"

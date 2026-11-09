@@ -10,7 +10,7 @@ const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-al
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
 const K = typeof module !== 'undefined' ? require('./calculos.js')
-  : { PERIMETROS, DOBRAS, EXAMES, ROTULO_ETNIA, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
+  : { PERIMETROS, DOBRAS, EXAMES, MAX_OUTROS_EXERCICIOS, SUGESTOES_EXERCICIOS, chaveExercicio, EQUACOES_GORDURA, equacaoDe, idadeEm, lerNumero, mediaDobra, calcular, classeProporcao, classeExame };
 
 /* ---------- Regras puras (testadas em tests/app.cjs) ---------- */
 const doisDigitos = n => String(n).padStart(2, '0');
@@ -66,7 +66,7 @@ const FAIXAS = {
 /** Rascunho vazio do formulário (texto, como digitado). */
 function rascunhoVazio(data, altura) {
   return { data, peso: '', altura: altura == null ? '' : String(altura).replace('.', ','), fc_repouso: '', pas: '', pad: '', glicose: '', triglicerideos: '', ldl: '', hdl: '',
-    per: {}, dob1: {}, dob2: {}, equacao: 'faulkner', supC: '', supR: '', legC: '', legR: '', parecer: '' };
+    per: {}, dob1: {}, dob2: {}, equacao: 'faulkner', supC: '', supR: '', legC: '', legR: '', outros: [], parecer: '' };
 }
 /** Rascunho a partir de uma avaliação salva (para editar). */
 function rascunhoDe(av) {
@@ -77,6 +77,7 @@ function rascunhoDe(av) {
   for (const [k] of K.DOBRAS) { const par = av.dobras?.[k] || []; r.dob1[k] = t(par[0]); r.dob2[k] = t(par[1]); }
   r.supC = t(av.forca?.supino?.carga); r.supR = t(av.forca?.supino?.reps);
   r.legC = t(av.forca?.leg_press?.carga); r.legR = t(av.forca?.leg_press?.reps);
+  r.outros = (Array.isArray(av.forca?.outros) ? av.forca.outros : []).map(o => ({ nome: o.nome || '', c: t(o.carga), r: t(o.reps) }));
   r.equacao = K.equacaoDe(av);
   r.parecer = av.parecer || '';
   return r;
@@ -114,14 +115,35 @@ function montarAvaliacao(r, hoje = hojeISO()) {
     reg.dobras[k] = b == null ? [a] : [a, b];
   }
   reg.forca = {};
-  for (const [k, nome, c, rp] of [['supino', 'Supino', r.supC, r.supR], ['leg_press', 'Leg press', r.legC, r.legR]]) {
+  /** Confere carga e repetições de um exercício; devolve { carga, reps }, null (vazio) ou undefined (erro já anotado). */
+  const cargaReps = (nome, c, rp) => {
     const carga = K.lerNumero(c), reps = K.lerNumero(rp);
-    if (carga == null && reps == null) continue;
-    if (carga == null || reps == null) { erros.push(`${nome}: preencha a carga e as repetições.`); continue; }
-    if (Number.isNaN(carga) || carga < 1 || carga > 1000) { erros.push(`${nome}: carga entre 1 e 1000 kg.`); continue; }
-    if (!Number.isInteger(reps) || reps < 1 || reps > 30) { erros.push(`${nome}: repetições inteiras, de 1 a 30.`); continue; }
-    reg.forca[k] = { carga, reps };
+    if (carga == null && reps == null) return null;
+    if (carga == null || reps == null) { erros.push(`${nome}: preencha a carga e as repetições.`); return undefined; }
+    if (Number.isNaN(carga) || carga < 1 || carga > 1000) { erros.push(`${nome}: carga entre 1 e 1000 kg.`); return undefined; }
+    if (!Number.isInteger(reps) || reps < 1 || reps > 30) { erros.push(`${nome}: repetições inteiras, de 1 a 30.`); return undefined; }
+    return { carga, reps };
+  };
+  for (const [k, nome, c, rp] of [['supino', 'Supino', r.supC, r.supR], ['leg_press', 'Leg press', r.legC, r.legR]]) {
+    const v = cargaReps(nome, c, rp);
+    if (v) reg.forca[k] = v;
   }
+  const outros = [], vistos = new Set(['supino', 'supino reto', 'leg press']);
+  for (const o of (r.outros || [])) {
+    const nome = String(o.nome || '').trim().replace(/\s+/g, ' ');
+    const vazio = !nome && K.lerNumero(o.c) == null && K.lerNumero(o.r) == null;
+    if (vazio) continue;
+    if (!nome) { erros.push('Dê um nome ao exercício que você acrescentou.'); continue; }
+    if (nome.length > 40) { erros.push(`${nome.slice(0, 20)}…: nome do exercício com no máximo 40 letras.`); continue; }
+    const chave = K.chaveExercicio(nome);
+    if (vistos.has(chave)) { erros.push(`${nome}: este exercício já está na lista.`); continue; }
+    vistos.add(chave);
+    const v = cargaReps(nome, o.c, o.r);
+    if (v === null) { erros.push(`${nome}: preencha a carga e as repetições.`); continue; }
+    if (v) outros.push({ nome, ...v });
+  }
+  if (outros.length > K.MAX_OUTROS_EXERCICIOS) erros.push(`No máximo ${K.MAX_OUTROS_EXERCICIOS} exercícios além do supino e do leg press.`);
+  else if (outros.length) reg.forca.outros = outros;
   const parecer = String(r.parecer || '').trim();
   if (parecer.length > 4000) erros.push('O parecer pode ter no máximo 4000 caracteres.');
   reg.parecer = parecer || null;
@@ -152,7 +174,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['Criamos um aluno de exemplo, a Mariana, com 3 avaliações fictícias, para você ver todas as telas funcionando.', 'Seus alunos e avaliações são só seus: nenhum outro personal vê nada.'] },
   { icone: '◉', titulo: '1. Seus alunos',
     texto: 'A lista de alunos fica ao lado (no celular, no topo). Toque num aluno para abrir a ficha dele.',
-    itens: ['“+ Novo” cadastra um aluno: nome, sexo, nascimento e etnia (usada no cálculo da massa muscular).', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
+    itens: ['“+ Novo” cadastra um aluno: nome, sexo e data de nascimento.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
   { icone: '＋', titulo: '2. Nova avaliação em 6 etapas',
     texto: 'Básico, exames, perímetros, dobras, força e parecer. Só peso e altura são obrigatórios.',
     itens: ['Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).'] },
@@ -189,30 +211,30 @@ function deveMostrarTutorial(metadados, vistoNoAparelho) {
 }
 
 /* ---------- Aluno de exemplo (primeiro acesso do personal) ---------- */
-const ALUNO_EXEMPLO = { nome: 'Mariana Costa (exemplo)', sexo: 'F', nascimento: '1994-03-12', etnia: 'branca', contato: null, exemplo: true };
+const ALUNO_EXEMPLO = { nome: 'Mariana Costa (exemplo)', sexo: 'F', nascimento: '1994-03-12', contato: null, exemplo: true };
 const PERIM_EX = ['bracoD', 'bracoE', 'antD', 'antE', 'torax', 'cintura', 'abdomen', 'quadril', 'coxaSupD', 'coxaSupE', 'coxaMedD', 'coxaMedE', 'pantD', 'pantE'];
 const DOBRA_EX = ['triceps', 'subesc', 'biceps', 'iliaca', 'supraesp', 'abdominal', 'coxa', 'panturrilha'];
 /** As 3 avaliações fictícias da Mariana (junho, agosto e outubro de 2026), prontas para gravar. */
 function avaliacoesExemplo(alunoId) {
-  const av = (data, peso, fc, pas, pad, ex, per, dob, sup, leg, parecer, equacao = 'faulkner') => ({
+  const av = (data, peso, fc, pas, pad, ex, per, dob, sup, leg, agach, parecer, equacao = 'faulkner') => ({
     aluno_id: alunoId, data, peso, altura: 1.65, fc_repouso: fc, pas, pad,
     glicose: ex[0], triglicerideos: ex[1], ldl: ex[2], hdl: ex[3],
     perimetros: Object.fromEntries(PERIM_EX.map((k, i) => [k, per[i]])),
     dobras: Object.fromEntries(DOBRA_EX.map((k, i) => [k, [dob[i][0], dob[i][1] ?? null].filter((x, j) => j === 0 || x != null)])),
-    forca: { supino: { carga: sup[0], reps: sup[1] }, leg_press: { carga: leg[0], reps: leg[1] } },
+    forca: { supino: { carga: sup[0], reps: sup[1] }, leg_press: { carga: leg[0], reps: leg[1] }, outros: [{ nome: 'Agachamento livre', carga: agach[0], reps: agach[1] }] },
     equacao_gordura: equacao, parecer });
   return [
     av('2026-06-08', 66.4, 74, 124, 82, [96, 142, 128, 52],
       [28.4, 28.0, 23.6, 23.3, 88.0, 74.5, 82.0, 102.5, 59.5, 59.0, 55.0, 54.6, 36.0, 35.8],
-      [[26, 26.4], [22, 21.6], [11], [26, 26.2], [15], [30, 30.4], [31], [19]], [30, 8], [120, 10],
+      [[26, 26.4], [22, 21.6], [11], [26, 26.2], [15], [30, 30.4], [31], [19]], [30, 8], [120, 10], [40, 8],
       'Primeira avaliação. Boa disposição e técnica razoável nos testes.\nPrioridade: reduzir gordura central e ganhar força de membros superiores.\nPróximos passos: treino 4x por semana e cardio leve 2x.'),
     av('2026-08-10', 64.9, 70, 120, 80, [92, 128, 121, 55],
       [28.6, 28.3, 23.8, 23.5, 87.0, 72.8, 80.1, 101.0, 59.6, 59.3, 55.3, 55.0, 36.2, 36.0],
-      [[24], [20], [10], [23], [13], [27], [29], [18]], [34, 8], [140, 10],
+      [[24], [20], [10], [23], [13], [27], [29], [18]], [34, 8], [140, 10], [46, 8],
       'Boa evolução em dois meses: menos gordura central e mais força no supino.\nManter a frequência e aumentar a carga do leg press aos poucos.'),
     av('2026-10-14', 63.8, 66, 116, 76, [89, 112, 115, 58],
       [29.0, 28.6, 24.0, 23.7, 86.5, 71.0, 78.5, 100.0, 59.8, 59.5, 55.6, 55.2, 36.4, 36.2],
-      [[22], [19], [9], [21], [12], [24], [27], [17]], [38, 8], [160, 10],
+      [[22], [19], [9], [21], [12], [24], [27], [17]], [38, 8], [160, 10], [52, 8],
       'Excelente adesão. Gordura em queda constante e massa muscular subindo.\nFC de repouso melhorou (66 bpm). Próxima fase: hipertrofia de membros inferiores.')
   ];
 }
@@ -296,7 +318,7 @@ function iniciar() {
   async function carregarPersonal() {
     const [p, a, r] = await Promise.all([
       db.from('personais').select('usuario_id,nome,cref').eq('usuario_id', est.usuario.id).single(),
-      db.from('alunos').select('id,nome,sexo,nascimento,etnia,contato,usuario_id,exemplo').order('exemplo').order('nome'),
+      db.from('alunos').select('id,nome,sexo,nascimento,contato,usuario_id,exemplo').order('exemplo').order('nome'),
       db.from('avaliacoes').select('aluno_id,data')
     ]);
     if (p.error || a.error || r.error) throw p.error || a.error || r.error;
@@ -364,7 +386,7 @@ function iniciar() {
     const idade = K.idadeEm(a.nascimento, hojeISO());
     const cab = h('section', { class: 'card' }, h('div', { class: 'perfil' },
       h('div', null, h('h2', null, a.nome), h('div', { class: 'meta' },
-        h('span', null, a.sexo === 'F' ? 'Feminino' : 'Masculino'), h('span', { class: 'num' }, `${idade} anos`), h('span', null, K.ROTULO_ETNIA[a.etnia]),
+        h('span', null, a.sexo === 'F' ? 'Feminino' : 'Masculino'), h('span', { class: 'num' }, `${idade} anos`),
         a.exemplo ? h('span', { class: 'chip destaque' }, 'Aluno de exemplo: dados fictícios') : a.usuario_id ? h('span', { class: 'chip bom' }, 'Acessa o app') : h('span', { class: 'chip' }, 'Sem acesso ao app'))),
       h('div', { class: 'linha' },
         h('button', { class: 'btn', type: 'button', onclick: () => abrirAluno(a) }, 'Editar'),
@@ -428,10 +450,11 @@ function iniciar() {
         h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Força (1RM estimado)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Exercício'), h('th', { class: 'n' }, 'Carga × reps'), h('th', { class: 'n' }, '1RM'), h('th', { class: 'n' }, '÷ peso'), h('th', null, 'Classificação'))),
           h('tbody', null, forca('Supino reto', v.forca?.supino, c.supino1RM, c.supinoRelativo, c.supino1RM == null ? null : chip(c.classeSupino)),
-            forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : chip(c.classeLegPress))))),
-          h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')),
+            forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : chip(c.classeLegPress)),
+            c.outrosExercicios.map(o => forca(o.nome, o, o.rm, o.relativo, h('span', { class: 'sub' }, 'sem tabela')))))),
+          h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Supino e leg press têm tabela de classificação; os outros exercícios mostram o 1RM para acompanhar a evolução. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')),
         h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Coração e exames'), h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
-          h('tr', null, h('td', null, 'FC repouso / máxima / reserva'), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
+          h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
           Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) ),
       h('section', { class: 'card' }, h('h3', { class: 'titulo-secao' }, 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || 'Sem parecer.'))
@@ -475,6 +498,16 @@ function iniciar() {
   }
 
   /* ----- Comparar ----- */
+  /** Linhas de 1RM dos outros exercícios, casando pelo nome (sem acento nem maiúsculas) entre as duas avaliações. */
+  function linhasOutros(ca, cb) {
+    const mapa = new Map();
+    for (const [i, c] of [[0, ca], [1, cb]]) for (const o of c.outrosExercicios) {
+      const k = K.chaveExercicio(o.nome);
+      if (!mapa.has(k)) mapa.set(k, [`1RM ${o.nome.toLowerCase()} (kg)`, null, null, 1]);
+      mapa.get(k)[i + 1] = o.rm;
+    }
+    return [...mapa.values()];
+  }
   function telaComparar(a, avs) {
     if (avs.length < 2) return h('section', { class: 'card' }, h('p', { class: 'aviso' }, 'É preciso ter duas avaliações para comparar.'));
     const sel = (id, padrao) => h('select', { id, onchange: atualizar }, avs.map(v => h('option', { value: v.id, selected: v.id === padrao.id }, dataBR(v.data))));
@@ -484,7 +517,7 @@ function iniciar() {
       const linhas = [['Peso (kg)', +A.peso, +B.peso, 0], ['Gordura (%)', ca.gordura, cb.gordura, -1], ['Massa muscular (kg)', ca.massaMuscular, cb.massaMuscular, 1], ['Massa gorda (kg)', ca.massaGorda, cb.massaGorda, -1],
         ['Σ 8 dobras (mm)', ca.somaDobras, cb.somaDobras, -1], ['Dobras centrais (mm)', ca.dobrasCentrais, cb.dobrasCentrais, -1],
         ...K.PERIMETROS.map(([k, n]) => [`${n} (cm)`, A.perimetros?.[k], B.perimetros?.[k], ['cintura', 'abdomen'].includes(k) ? -1 : 0]),
-        ['1RM supino (kg)', ca.supino1RM, cb.supino1RM, 1], ['1RM leg press (kg)', ca.legPress1RM, cb.legPress1RM, 1], ['FC de repouso (bpm)', A.fc_repouso, B.fc_repouso, -1], ['Pressão sistólica (mmHg)', A.pas, B.pas, -1]]
+        ['1RM supino (kg)', ca.supino1RM, cb.supino1RM, 1], ['1RM leg press (kg)', ca.legPress1RM, cb.legPress1RM, 1], ...linhasOutros(ca, cb), ['FC de repouso (bpm)', A.fc_repouso, B.fc_repouso, -1], ['Pressão sistólica (mmHg)', A.pas, B.pas, -1]]
         .filter(([, x, y]) => x != null || y != null);
       corpo.replaceChildren(...linhas.map(([n, x, y, d]) => { const dif = x != null && y != null ? y - x : null;
         return h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(x)), h('td', { class: 'n' }, fmt(y)), h('td', { class: 'n' }, dif == null ? '—' : h('span', { class: 'delta ' + sentido(dif, d) }, `${dif > 0 ? '+' : ''}${fmt(dif)}`))); }));
@@ -531,9 +564,23 @@ function iniciar() {
           return h('div', { class: 'dobra' }, h('span', null, n), inp(r.dob1, '1ª medida'), inp(r.dob2, '2ª medida'), m); }));
       queueMicrotask(() => K.DOBRAS.forEach(([k]) => atualizarMedia(k)));
     }
-    if (p === 4) corpo = h('div', null, h('p', { class: 'sub' }, 'Carga levantada e repetições até a falha (até 10 para uma boa estimativa).'),
-      h('div', { class: 'campos' }, campo(['Supino: carga ', h('span', { class: 'fraco' }, '(kg)')], r, 'supC'), campo('Supino: repetições', r, 'supR', { modo: 'numeric' }),
-        campo(['Leg press: carga ', h('span', { class: 'fraco' }, '(kg)')], r, 'legC'), campo('Leg press: repetições', r, 'legR', { modo: 'numeric' })));
+    if (p === 4) {
+      r.outros = r.outros || [];
+      const refazer = focarUltimo => rotear().then(() => { if (focarUltimo) [...document.querySelectorAll('.exercicio input')].at(-3)?.focus(); });
+      const cheio = r.outros.length >= K.MAX_OUTROS_EXERCICIOS;
+      corpo = h('div', null, h('p', { class: 'sub' }, 'Carga levantada e repetições até a falha (até 10 para uma boa estimativa). Preencha só os exercícios que testou.'),
+        h('div', { class: 'campos' }, campo(['Supino: carga ', h('span', { class: 'fraco' }, '(kg)')], r, 'supC'), campo('Supino: repetições', r, 'supR', { modo: 'numeric' }),
+          campo(['Leg press: carga ', h('span', { class: 'fraco' }, '(kg)')], r, 'legC'), campo('Leg press: repetições', r, 'legR', { modo: 'numeric' })),
+        h('h3', { class: 'titulo-secao outros-titulo' }, 'Outros exercícios'),
+        h('p', { class: 'sub' }, 'Escolha qualquer exercício para o teste de 1RM. Sem tabela de classificação: o app mostra o 1RM e a evolução entre avaliações.'),
+        h('datalist', { id: 'sugestoesExercicios' }, K.SUGESTOES_EXERCICIOS.map(n => h('option', { value: n }))),
+        r.outros.map((o, i) => h('div', { class: 'exercicio' },
+          h('label', { class: 'campo' }, 'Exercício', h('input', { value: o.nome, maxlength: '40', list: 'sugestoesExercicios', autocomplete: 'off', oninput: ev => { o.nome = ev.target.value; } })),
+          campo('Carga (kg)', o, 'c'), campo('Repetições', o, 'r', { modo: 'numeric' }),
+          h('button', { class: 'btn ghost', type: 'button', 'aria-label': `Remover ${o.nome || 'exercício'}`, onclick: () => { r.outros.splice(i, 1); refazer(false); } }, 'Remover'))),
+        h('button', { class: 'btn', type: 'button', disabled: cheio, onclick: () => { r.outros.push({ nome: '', c: '', r: '' }); refazer(true); } }, '+ Outro exercício'),
+        cheio ? h('p', { class: 'sub' }, `Até ${K.MAX_OUTROS_EXERCICIOS} exercícios além do supino e do leg press.`) : null);
+    }
     if (p === 5) corpo = h('label', { class: 'campo' }, ['Parecer descritivo ', h('span', { class: 'fraco' }, '(o aluno também vê este texto)')],
       h('textarea', { maxlength: '4000', oninput: ev => { r.parecer = ev.target.value; } }, r.parecer));
     const erro = h('p', { class: 'msg', role: 'alert' });
@@ -595,13 +642,13 @@ function iniciar() {
     est.editandoAluno = a;
     $('alunoDlgTitulo').textContent = a ? 'Editar aluno' : 'Novo aluno';
     $('alNome').value = a?.nome || ''; $('alSexo').value = a?.sexo || 'F'; $('alNasc').value = a?.nascimento || ''; $('alNasc').max = hojeISO();
-    $('alEtnia').value = a?.etnia || 'branca'; $('alContato').value = a?.contato || '';
+    $('alContato').value = a?.contato || '';
     $('alExcluir').classList.toggle('hidden', !a);
     aviso('alunoMsg', ''); $('alunoDialog').showModal(); $('alNome').focus();
   }
   $('alunoForm').addEventListener('submit', async ev => {
     ev.preventDefault();
-    const dados = { nome: $('alNome').value.trim().replace(/\s+/g, ' '), sexo: $('alSexo').value, nascimento: $('alNasc').value, etnia: $('alEtnia').value, contato: $('alContato').value.trim() || null };
+    const dados = { nome: $('alNome').value.trim().replace(/\s+/g, ' '), sexo: $('alSexo').value, nascimento: $('alNasc').value, contato: $('alContato').value.trim() || null };
     if (!dados.nome) return aviso('alunoMsg', 'Informe o nome.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.nascimento) || dados.nascimento > hojeISO() || dados.nascimento < '1900-01-01') return aviso('alunoMsg', 'Informe uma data de nascimento válida.');
     $('alSalvar').disabled = true;
@@ -724,7 +771,7 @@ function iniciar() {
   /* ----- Visão do aluno ----- */
   async function telaDoAluno() {
     const [{ data: eu }, { data: avs, error }, { data: pers }] = await Promise.all([
-      db.from('alunos').select('id,nome,sexo,nascimento,etnia').eq('usuario_id', est.usuario.id).single(),
+      db.from('alunos').select('id,nome,sexo,nascimento').eq('usuario_id', est.usuario.id).single(),
       db.from('avaliacoes').select('*').order('data').order('criado_em'),
       db.from('personais').select('nome').limit(1).maybeSingle()]);
     if (error || !eu) throw error || new Error('sem ficha');

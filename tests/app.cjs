@@ -64,6 +64,31 @@ erro({ pas: '120' }, /duas medidas/); erro({ pas: '80', pad: '90' }, /menor que 
 erro({ per: { cintura: '900' } }, /Cintura/); erro({ dob1: { triceps: 'abc' } }, /Tríceps/); erro({ dob2: { coxa: '20' } }, /1ª medida/);
 erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Leg press: repetições/); erro({ parecer: 'x'.repeat(4001) }, /4000/);
 
+// Outros exercícios do teste de força (0.5.0)
+{
+  const base = { ...A.rascunhoVazio('2026-10-14', 1.7), peso: '70' };
+  const ok = A.montarAvaliacao({ ...base, outros: [{ nome: ' Agachamento   livre ', c: '60', r: '6' }, { nome: '', c: '', r: '' }, { nome: 'Rosca direta', c: '14,5', r: '1' }] }, '2026-11-04');
+  assert.deepEqual(ok.erros, []);
+  assert.deepEqual(ok.registro.forca, { outros: [{ nome: 'Agachamento livre', carga: 60, reps: 6 }, { nome: 'Rosca direta', carga: 14.5, reps: 1 }] }, 'linha vazia é ignorada');
+  assert.deepEqual(A.montarAvaliacao(base, '2026-11-04').registro.forca, {}, 'sem exercícios, sem chave outros');
+  erro({ outros: [{ nome: '', c: '50', r: '5' }] }, /nome ao exercício/);
+  erro({ outros: [{ nome: 'Remada', c: '50', r: '' }] }, /Remada: preencha/);
+  erro({ outros: [{ nome: 'Remada', c: '', r: '' }] }, /Remada: preencha/);
+  erro({ outros: [{ nome: 'Remada', c: '5000', r: '5' }] }, /Remada: carga/);
+  erro({ outros: [{ nome: 'Remada', c: '50', r: '2,5' }] }, /Remada: repetições/);
+  erro({ outros: [{ nome: 'Remada', c: '50', r: '5' }, { nome: 'REMADA', c: '40', r: '5' }] }, /já está na lista/);
+  erro({ outros: [{ nome: 'Supino reto', c: '50', r: '5' }] }, /já está na lista/);
+  erro({ outros: [{ nome: 'x'.repeat(41), c: '50', r: '5' }] }, /40 letras/);
+  erro({ outros: Array.from({ length: 9 }, (_, i) => ({ nome: 'Ex ' + i, c: '10', r: '5' })) }, /No máximo 8/);
+  // Editar ida e volta com outros exercícios
+  const volta = A.montarAvaliacao(A.rascunhoDe({ ...ok.registro, data: '2026-10-14', peso: 70, altura: 1.7 }), '2026-11-04');
+  assert.deepEqual(volta.registro.forca, ok.registro.forca);
+  // Aluno de exemplo: sem etnia e com um exercício livre que evolui
+  assert.equal('etnia' in A.ALUNO_EXEMPLO, false, 'aluno de exemplo sem etnia');
+  const ex = A.avaliacoesExemplo('x');
+  assert.deepEqual(ex.map(v => v.forca.outros[0].carga), [40, 46, 52]);
+}
+
 // Editar: rascunho a partir do salvo e de volta dá o mesmo registro
 const ida = A.montarAvaliacao(A.rascunhoDe({ ...registro }), '2026-11-04');
 assert.deepEqual(ida.erros, []); assert.deepEqual(ida.registro, registro);
