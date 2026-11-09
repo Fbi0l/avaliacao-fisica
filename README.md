@@ -2,6 +2,13 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 0.10.0 — Etapas independentes
+
+- **Nenhuma etapa da avaliação é obrigatória**, nem peso e altura (pedido do dono: por exemplo, o personal não consegue medir as próprias dobras). Dá para registrar só os testes, só a postura, perímetros sem dobras, só o peso ou só um parecer; basta ter alguma coisa.
+- Sem o aviso de "faltam medidas" ao salvar. O app calcula o que for possível com o que foi preenchido: sem peso e altura, não saem IMC, massa gorda e magra, massa muscular, força relativa (e a classificação do supino e do leg press) nem a proporção do modelo Phantom; o resto sai normal.
+- O resultado mostra só o que foi medido: números principais, seções e tabelas vazias não aparecem. Gráficos, comparação e o painel do aluno ignoram o que não foi medido.
+- Banco: `peso` e `altura` deixam de ser obrigatórios (migração `peso_altura_opcionais`); as faixas aceitas continuam as mesmas. Guia de uso atualizado.
+
 ## Versão 0.9.0 — Visual Coral revisado
 
 - **Visual novo** (direção "A · Coral", revisada com as skills de UX e pela Lei de Jakob: o app funciona como os apps que as pessoas já usam). Cores quentes com coral só em ações e seleção; números em preto e status sempre com seta e palavra, não só cor. Fontes Outfit (títulos e números) e Work Sans (texto), servidas pelo próprio site. Ícone do app em coral. Modo escuro acompanha.

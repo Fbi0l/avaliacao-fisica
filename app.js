@@ -146,7 +146,7 @@ function montarAvaliacao(r, hoje = hojeISO()) {
   for (const [k, [min, max, msg]] of Object.entries(FAIXAS)) {
     let v = K.lerNumero(r[k]);
     if (k === 'altura' && v >= 100 && v <= 240) v = v / 100; // digitou em centímetros
-    if (v == null) { if (k === 'peso' || k === 'altura') erros.push(msg); reg[k] = null; continue; }
+    if (v == null) { reg[k] = null; continue; }
     if (Number.isNaN(v) || v < min || v > max) { erros.push(msg); continue; }
     reg[k] = k === 'altura' ? Math.round(v * 100) / 100 : Math.round(v * 10) / 10;
     if (['fc_repouso', 'pas', 'pad'].includes(k)) reg[k] = Math.round(v);
@@ -204,6 +204,8 @@ function montarAvaliacao(r, hoje = hojeISO()) {
   const parecer = String(r.parecer || '').trim();
   if (parecer.length > 4000) erros.push('O parecer pode ter no máximo 4000 caracteres.');
   reg.parecer = parecer || null;
+  // Etapas independentes (0.10.0): nenhuma é obrigatória, mas a avaliação precisa ter alguma coisa.
+  if (!erros.length && !temAlgumaMedida(reg)) erros.push('Preencha pelo menos uma medida (de qualquer etapa) ou o parecer.');
   return { registro: reg, erros };
 }
 
@@ -227,6 +229,13 @@ function filtrosDoAluno(aluno, resumo, hoje = hojeISO()) {
   return { reavaliar: dias > DIAS_REAVALIAR, semAcesso: !aluno.usuario_id };
 }
 
+/** A avaliação tem alguma medida ou parecer? (qualquer etapa serve) */
+function temAlgumaMedida(reg) {
+  const cheio = o => o && typeof o === 'object' && Object.keys(o).length > 0;
+  return Object.keys(FAIXAS).some(k => reg[k] != null) || cheio(reg.perimetros) || cheio(reg.dobras) || cheio(reg.forca) || cheio(reg.testes)
+    || cheio(reg.postura) || !!reg.parecer;
+}
+
 /** Diferença com sentido: 'bom', 'ruim' ou 'neutro', conforme a direção desejada (1 sobe, -1 desce, 0 tanto faz). */
 function sentido(dif, desejado) { return !desejado || !Number.isFinite(dif) || Math.abs(dif) < 0.05 ? 'neutro' : dif * desejado > 0 ? 'bom' : 'ruim'; }
 
@@ -247,7 +256,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '0.9.0';
+const GUIA_REVISADO_NA_VERSAO = '0.10.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -256,7 +265,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     texto: 'A lista de alunos fica ao lado (no celular, ocupa a tela). Toque num aluno para abrir a ficha dele.',
     itens: ['“Novo aluno” cadastra um aluno: nome, sexo e data de nascimento. No celular, é o botão laranja embaixo, à direita.', 'Os filtros “Reavaliar” (última avaliação há mais de 3 meses) e “Sem acesso” (ainda não entrou no app) ajudam a achar quem precisa de atenção.', '“Editar” corrige os dados ou exclui o aluno com tudo dele.'] },
   { icone: '＋', titulo: '2. Nova avaliação em 8 etapas',
-    texto: 'Básico, exames, perímetros, dobras, força, testes, postura e parecer. Só peso e altura são obrigatórios.',
+    texto: 'Básico, exames, perímetros, dobras, força, testes, postura e parecer. Nenhuma etapa é obrigatória: preencha só o que mediu (por exemplo, só os testes, ou perímetros sem dobras).',
     itens: ['A barra de progresso mostra em que etapa você está; no celular, “Voltar” e “Próximo” ficam fixos embaixo.', 'Gordura e massa muscular aparecem ao lado enquanto você preenche.', 'Nas dobras, dá para anotar 1ª e 2ª medida: o app tira a média.', 'Você escolhe a equação de gordura: Faulkner ou Petroski (1995, feita com brasileiros).', 'Na etapa Força, além de supino e leg press, “+ Outro exercício” testa o 1RM em qualquer exercício.', 'Na etapa Testes: flexão de braço, abdominal em 1 minuto, teste aeróbico (Cooper ou distância e tempo livres) e flexiteste, todos opcionais.', 'Na etapa Postura: checklist visual de frente, de lado e de costas, com observações.'] },
   { icone: '▤', titulo: '3. O resultado completo',
     texto: 'Cada avaliação vira uma ficha com tudo calculado. Os números principais ficam no topo e cada parte (perímetros, força, testes, postura, coração, zonas) abre e fecha com um toque.',
@@ -349,7 +358,7 @@ const TEXTO_INSTALAR = {
 };
 
 if (typeof module !== 'undefined') {
-  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, filtrosDoAluno, DIAS_REAVALIAR, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
+  module.exports = { GUIA_REVISADO_NA_VERSAO, avisoInstalacao, TEXTO_INSTALAR, PASSOS_TUTORIAL_PERSONAL, PASSOS_TUTORIAL_ALUNO, deveMostrarTutorial, ALUNO_EXEMPLO, avaliacoesExemplo, deveCriarExemplo, conviteDoLink, situacaoConvite, TERMO_PERSONAL_VERSAO, faltasDoCalculo, listaFalta, zonasDoAluno, filtrosDoAluno, temAlgumaMedida, DIAS_REAVALIAR, TERMO_VERSAO, hojeISO, fmt, codigoDoLink, linkConvite, expirouPorInatividade, lerRota, rascunhoVazio, rascunhoDe, montarAvaliacao, testesVazios, montarPostura, sentido };
 } else {
   iniciar();
 }
@@ -506,7 +515,7 @@ function iniciar() {
     else corpo = h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Avaliações'), h('p', { class: 'sub' }, 'Toque numa avaliação para ver o resultado completo.'))),
       h('div', { class: 'lista-av' }, [...avs].reverse().map(v => { const c = K.calcular(a, v); return h('button', { class: 'av-item', type: 'button', onclick: () => ir('av-' + v.id) },
         h('span', null, h('strong', null, dataBR(v.data))),
-        h('span', null, h('span', { class: 'k' }, 'Peso'), h('span', { class: 'v' }, `${fmt(v.peso)} kg`)),
+        h('span', null, h('span', { class: 'k' }, 'Peso'), h('span', { class: 'v' }, v.peso == null ? '—' : `${fmt(v.peso)} kg`)),
         h('span', null, h('span', { class: 'k' }, 'Gordura'), h('span', { class: 'v' }, c.gordura == null ? '—' : `${fmt(c.gordura)}%`)),
         h('span', { class: 'some-cel' }, h('span', { class: 'k' }, 'M. muscular'), h('span', { class: 'v' }, c.massaMuscular == null ? '—' : `${fmt(c.massaMuscular)} kg`))); })));
     const voltar = h('div', { class: 'linha so-cel' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('inicio') }, '‹ Alunos'));
@@ -520,10 +529,6 @@ function iniciar() {
     const kpi = (k, valor, un, extra) => h('div', { class: 'kpi' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, valor, un ? h('small', null, un) : null), extra);
     const falta = faltasDoCalculo(v);
     const faltaTexto = nomes => h('span', { class: 'sub' }, `Para calcular, falta: ${listaFalta(nomes)}.`);
-    const faltaAviso = av => (falta.gordura.length || falta.muscular.length)
-      ? h('p', { class: 'aviso nao-imprimir' }, 'Algumas medidas não foram registradas, então parte dos resultados não aparece. ',
-          h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('editar-' + av.id) }, 'Completar a avaliação ›'))
-      : null;
     const forca = (nome, f, rm, rel, classe) => h('tr', null, h('td', null, nome), h('td', { class: 'n' }, f ? `${fmt(f.carga, 0)} × ${f.reps}` : '—'), h('td', { class: 'n' }, fmt(rm)), h('td', { class: 'n' }, fmt(rel, 2)), h('td', null, classe));
     const nPer = K.PERIMETROS.filter(([k]) => v.perimetros?.[k] != null).length, nDob = K.DOBRAS.filter(([k]) => c.dobras[k] != null).length;
     const abre = !paraAluno; // o personal vê tudo aberto; o aluno vê o resumo e abre o que quiser
@@ -533,28 +538,28 @@ function iniciar() {
       paraAluno ? h('div', { class: 'linha nao-imprimir' }, h('a', { class: 'btn ghost', href: '#avaliacoes' }, '‹ Avaliações'))
         : h('div', { class: 'linha nao-imprimir' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => ir('aluno-' + a.id) }, `‹ ${a.nome}`)),
       h('section', { class: 'card' },
-        h('div', { class: 'card-topo' }, h('div', null, h('h2', null, paraAluno ? dataBR(v.data) : `${a.nome} · ${dataBR(v.data)}`), h('p', { class: 'sub num' }, `${c.idade} anos · ${fmt(v.peso)} kg · ${fmt(v.altura, 2)} m · IMC ${fmt(c.imc)}`)),
+        h('div', { class: 'card-topo' }, h('div', null, h('h2', null, paraAluno ? dataBR(v.data) : `${a.nome} · ${dataBR(v.data)}`), h('p', { class: 'sub num' }, [`${c.idade} anos`, c.peso != null ? `${fmt(c.peso)} kg` : null, c.altura != null ? `${fmt(c.altura, 2)} m` : null, c.imc != null ? `IMC ${fmt(c.imc)}` : null].filter(Boolean).join(' · '))),
           h('div', { class: 'linha nao-imprimir' },
             paraAluno ? null : h('button', { class: 'btn perigo-leve', type: 'button', onclick: () => excluirAvaliacao(a, v) }, 'Excluir'),
             h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Imprimir / PDF'),
             paraAluno ? null : h('button', { class: 'btn primary', type: 'button', onclick: () => ir('editar-' + v.id) }, 'Editar'))),
-        paraAluno ? null : faltaAviso(v),
-        h('div', { class: 'kpis' },
-          kpi(`Gordura · ${K.EQUACOES_GORDURA[c.equacaoGordura].nome}`, fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)),
-          kpi('Massa muscular', fmt(c.massaMuscular), c.massaMuscular == null ? null : 'kg', c.massaMuscular == null ? faltaTexto(falta.muscular) : chip(c.classeMuscular)),
-          kpi('Massa gorda / magra', fmt(c.massaGorda), c.massaGorda == null ? null : `/ ${fmt(c.massaMagra)} kg`, c.massaGorda == null ? h('span', { class: 'sub' }, 'Sai junto com a gordura.') : null),
-          kpi('Σ 8 dobras', fmt(c.somaDobras, 0), c.somaDobras == null ? null : 'mm', c.somaDobras == null ? h('span', { class: 'sub' }, 'Nenhuma dobra registrada.') : h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)))),
-      nPer || nDob ? secao('Perímetros e dobras', `${nPer} ${nPer === 1 ? 'perímetro' : 'perímetros'} · ${nDob} ${nDob === 1 ? 'dobra' : 'dobras'}`, abre,
+        c.gordura != null || nDob || c.massaMuscular != null ? h('div', { class: 'kpis' },
+          // Só o que foi medido: um número que não dá para calcular por falta de uma etapa não aparece.
+          c.gordura != null || nDob ? kpi(`Gordura · ${K.EQUACOES_GORDURA[c.equacaoGordura].nome}`, fmt(c.gordura), c.gordura == null ? null : '%', c.gordura == null ? faltaTexto(falta.gordura) : chip(c.classeGordura)) : null,
+          c.massaMuscular != null ? kpi('Massa muscular', fmt(c.massaMuscular), 'kg', chip(c.classeMuscular)) : null,
+          c.massaGorda != null ? kpi('Massa gorda / magra', fmt(c.massaGorda), `/ ${fmt(c.massaMagra)} kg`) : null,
+          c.somaDobras != null ? kpi('Σ 8 dobras', fmt(c.somaDobras, 0), 'mm', h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)) : null) : null),
+      nPer || nDob ? secao('Perímetros e dobras', [nPer ? `${nPer} ${nPer === 1 ? 'perímetro' : 'perímetros'}` : null, nDob ? `${nDob} ${nDob === 1 ? 'dobra' : 'dobras'}` : null].filter(Boolean).join(' · '), abre,
         h('div', { class: 'dois' },
-          h('div', null, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
+          nPer ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Local'), h('th', { class: 'n' }, 'Medida'), h('th', null, 'Proporção'), h('th'))),
           h('tbody', null, K.PERIMETROS.filter(([k]) => v.perimetros?.[k] != null).map(([k, n]) => { const z = c.zPerimetros[k];
             return h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(v.perimetros[k])), z == null ? h('td') : regua(z), h('td', null, z == null ? null : chip(K.classeProporcao(z)))); }),
-            c.perimetroMuscularBraco == null ? null : h('tr', null, h('td', null, 'Perímetro muscular do braço'), h('td', { class: 'n' }, fmt(c.perimetroMuscularBraco)), h('td'), h('td')))))),
-          h('div', null, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela' }, h('table', null,
+            c.perimetroMuscularBraco == null ? null : h('tr', null, h('td', null, 'Perímetro muscular do braço'), h('td', { class: 'n' }, fmt(c.perimetroMuscularBraco)), h('td'), h('td')))))) : null,
+          nDob ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Dobra'), h('th', { class: 'n' }, 'Média'), h('th', null, 'Proporção'), h('th'))),
-          h('tbody', null, K.DOBRAS.filter(([k]) => c.dobras[k] != null).map(([k, n]) => h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(c.dobras[k])), regua(c.zDobras[k]), h('td', null, chip(K.classeProporcao(c.zDobras[k])))))))))),
-        h('p', { class: 'aviso' }, 'Proporção compara a medida com um corpo de referência ajustado à altura do aluno (modelo Phantom). O ponto no meio da régua é a média.')) : null,
+          h('tbody', null, K.DOBRAS.filter(([k]) => c.dobras[k] != null).map(([k, n]) => h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(c.dobras[k])), regua(c.zDobras[k]), h('td', null, chip(K.classeProporcao(c.zDobras[k]))))))))) : null),
+        c.altura == null ? h('p', { class: 'aviso' }, 'Sem a altura nesta avaliação, a proporção (modelo Phantom) não é calculada.') : h('p', { class: 'aviso' }, 'Proporção compara a medida com um corpo de referência ajustado à altura do aluno (modelo Phantom). O ponto no meio da régua é a média.')) : null,
       c.exercicios1RM.length ? secao('Força (1RM)', resumoForca, abre, h('div', { class: 'tabela' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Exercício'), h('th', { class: 'n' }, 'Carga × reps'), h('th', { class: 'n' }, '1RM'), h('th', { class: 'n' }, '÷ peso'), h('th', null, 'Classificação'))),
           h('tbody', null, forca('Supino reto', v.forca?.supino, c.supino1RM, c.supinoRelativo, c.supino1RM == null ? null : chip(c.classeSupino)),
@@ -562,10 +567,10 @@ function iniciar() {
             c.outrosExercicios.map(o => forca(o.nome, o, o.rm, o.relativo, h('span', { class: 'sub' }, 'sem tabela')))))), h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Supino e leg press têm tabela de classificação; os outros exercícios mostram o 1RM para acompanhar a evolução. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')) : null,
       cardTestes(c.testes, abre),
       cardPostura(c, abre),
-      secao('Coração e exames', resumoCoracao || null, abre, h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
+      v.fc_repouso != null || v.pas != null || Object.keys(K.EXAMES).some(k => v[k] != null) ? secao('Coração e exames', resumoCoracao || null, abre, h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
-          Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))),
+          Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) : null,
       secaoZonas({ fc: c.zonasFC, exercicios: c.exercicios1RM, paraAluno, aberto: false }),
       h('section', { class: 'card' + (paraAluno ? ' recado' : '') }, h('h3', { class: 'titulo-secao' }, paraAluno ? 'Recado do seu personal' : 'Parecer do avaliador'), h('p', { class: 'parecer' }, v.parecer || (paraAluno ? 'Sem recado nesta avaliação.' : 'Sem parecer.')))
     ];
@@ -662,7 +667,7 @@ function iniciar() {
 
   /* ----- Gráficos ----- */
   const SERIES = [
-    { t: 'Peso', un: 'kg', des: 0, f: (v, c) => Number(v.peso) },
+    { t: 'Peso', un: 'kg', des: 0, f: (v, c) => c.peso },
     { t: 'Gordura', un: '%', des: -1, f: (v, c) => c.gordura },
     { t: 'Massa muscular', un: 'kg', des: 1, f: (v, c) => c.massaMuscular },
     { t: 'Σ 8 dobras', un: 'mm', des: -1, f: (v, c) => c.somaDobras },
@@ -715,7 +720,7 @@ function iniciar() {
     const sa = sel('compA', avs[0]), sb = sel('compB', avs.at(-1)), corpo = h('tbody');
     function atualizar() {
       const A = avs.find(v => v.id === sa.value), B = avs.find(v => v.id === sb.value), ca = K.calcular(a, A), cb = K.calcular(a, B);
-      const linhas = [['Peso (kg)', +A.peso, +B.peso, 0], ['Gordura (%)', ca.gordura, cb.gordura, -1], ['Massa muscular (kg)', ca.massaMuscular, cb.massaMuscular, 1], ['Massa gorda (kg)', ca.massaGorda, cb.massaGorda, -1],
+      const linhas = [['Peso (kg)', ca.peso, cb.peso, 0], ['Gordura (%)', ca.gordura, cb.gordura, -1], ['Massa muscular (kg)', ca.massaMuscular, cb.massaMuscular, 1], ['Massa gorda (kg)', ca.massaGorda, cb.massaGorda, -1],
         ['Σ 8 dobras (mm)', ca.somaDobras, cb.somaDobras, -1], ['Dobras centrais (mm)', ca.dobrasCentrais, cb.dobrasCentrais, -1],
         ...K.PERIMETROS.map(([k, n]) => [`${n} (cm)`, A.perimetros?.[k], B.perimetros?.[k], ['cintura', 'abdomen'].includes(k) ? -1 : 0]),
         ['1RM supino (kg)', ca.supino1RM, cb.supino1RM, 1], ['1RM leg press (kg)', ca.legPress1RM, cb.legPress1RM, 1], ...linhasOutros(ca, cb),
@@ -745,11 +750,11 @@ function iniciar() {
     const campo = (rot, obj, k, extra = {}) => h('label', { class: 'campo' }, rot,
       h('input', { inputMode: extra.modo || 'decimal', value: obj[k] ?? '', autocomplete: 'off', oninput: ev => { obj[k] = ev.target.value; vivo(); }, ...extra.attrs }));
     let corpo;
-    if (p === 0) corpo = h('div', { class: 'campos' },
+    if (p === 0) corpo = h('div', null, h('p', { class: 'sub' }, 'Nenhuma etapa é obrigatória: preencha só o que mediu. Sem peso e altura, o app não calcula IMC, massa gorda, massa muscular e força relativa, e o resto sai normal.'), h('div', { class: 'campos' },
       h('label', { class: 'campo' }, 'Data', h('input', { type: 'date', value: r.data, max: hojeISO(), oninput: ev => { r.data = ev.target.value; } })),
       campo(['Peso ', h('span', { class: 'fraco' }, '(kg)')], r, 'peso'), campo(['Altura ', h('span', { class: 'fraco' }, '(m)')], r, 'altura'),
       campo(['FC de repouso ', h('span', { class: 'fraco' }, '(bpm)')], r, 'fc_repouso', { modo: 'numeric' }),
-      campo(['Pressão sistólica ', h('span', { class: 'fraco' }, '(mmHg)')], r, 'pas', { modo: 'numeric' }), campo(['Pressão diastólica ', h('span', { class: 'fraco' }, '(mmHg)')], r, 'pad', { modo: 'numeric' }));
+      campo(['Pressão sistólica ', h('span', { class: 'fraco' }, '(mmHg)')], r, 'pas', { modo: 'numeric' }), campo(['Pressão diastólica ', h('span', { class: 'fraco' }, '(mmHg)')], r, 'pad', { modo: 'numeric' })));
     if (p === 1) corpo = h('div', null, h('p', { class: 'sub' }, 'Opcional. Preencha só os exames que o aluno trouxe.'),
       h('div', { class: 'campos' }, Object.entries(K.EXAMES).map(([k, e]) => campo([e.nome + ' ', h('span', { class: 'fraco' }, `(${e.unidade})`)], r, k))));
     if (p === 2) corpo = h('div', { class: 'campos' }, K.PERIMETROS.map(([k, n]) => campo([n + ' ', h('span', { class: 'fraco' }, '(cm)')], r.per, k)));
@@ -840,27 +845,16 @@ function iniciar() {
     const painel = h('aside', { class: 'ao-vivo', 'aria-live': 'polite' });
     function vivo() {
       const { registro, erros } = montarAvaliacao(r);
-      if (erros.length || !registro.peso) { painel.replaceChildren(h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Resultado na hora'), h('span', { class: 'sub' }, 'Aparece conforme você preenche peso, altura, perímetros e dobras.'))); return; }
+      if (erros.length || !(registro.dobras && Object.keys(registro.dobras).length) && !(registro.peso && registro.altura)) { painel.replaceChildren(h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Resultado na hora'), h('span', { class: 'sub' }, 'Aparece conforme você preenche peso, altura, perímetros e dobras.'))); return; }
       const c = K.calcular(a, registro);
       painel.replaceChildren(
         h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Gordura'), h('span', { class: 'v' }, fmt(c.gordura), c.gordura == null ? null : h('small', null, '%')), c.gordura == null ? h('span', { class: 'sub' }, `Para calcular, falta: ${listaFalta(faltasDoCalculo(registro).gordura)}.`) : chip(c.classeGordura)),
         h('div', { class: 'kpi' }, h('span', { class: 'k' }, 'Massa muscular'), h('span', { class: 'v' }, fmt(c.massaMuscular), c.massaMuscular == null ? null : h('small', null, 'kg')), c.massaMuscular == null ? h('span', { class: 'sub' }, 'Precisa de braço D, coxa média D, panturrilha D e as dobras deles.') : chip(c.classeMuscular)));
     }
     const irPasso = n => { est.passo = n; rotear(); };
-    let confirmouIncompleta = false;
     async function salvar(botao) {
       const { registro, erros } = montarAvaliacao(r);
       if (erros.length) { erro.textContent = erros.join(' '); return; }
-      // Sem as medidas da gordura ou da massa muscular, avisa uma vez antes de salvar.
-      const f = faltasDoCalculo(registro);
-      if (!confirmouIncompleta && (f.gordura.length || f.muscular.length)) {
-        const partes = [];
-        if (f.gordura.length) partes.push(`a gordura (falta ${listaFalta(f.gordura)})`);
-        if (f.muscular.length) partes.push(`a massa muscular (falta ${listaFalta(f.muscular)})`);
-        erro.textContent = `Atenção: sem essas medidas não dá para calcular ${partes.join(' nem ')}. Toque em salvar de novo para salvar assim, ou complete na etapa Dobras ou Perímetros.`;
-        confirmouIncompleta = true;
-        return;
-      }
       botao.disabled = true; erro.textContent = '';
       const q = existente ? db.from('avaliacoes').update(registro).eq('id', existente.id).select().single()
         : db.from('avaliacoes').insert({ ...registro, aluno_id: a.id }).select().single();
@@ -1057,7 +1051,7 @@ function iniciar() {
       h('div', { class: 'grandes' },
         kpi('Gordura corporal', c.gordura, '%', delta(c.gordura - c0.gordura, 'pontos', -1), c.classeGordura ? chip(c.classeGordura) : null),
         kpi('Massa muscular', c.massaMuscular, 'kg', delta(c.massaMuscular - c0.massaMuscular, 'kg', 1)),
-        kpi('Peso', Number(ult.peso), 'kg', delta(ult.peso - pri.peso, 'kg', 0)),
+        kpi('Peso', c.peso, 'kg', delta((c.peso ?? NaN) - (c0.peso ?? NaN), 'kg', 0)),
         kpi('Cintura', ult.perimetros?.cintura ?? null, 'cm', delta((ult.perimetros?.cintura ?? NaN) - (pri.perimetros?.cintura ?? NaN), 'cm', -1))),
       h('section', { class: 'card recado' }, h('h3', { class: 'titulo-secao' }, `Recado de ${personal}`), h('p', { class: 'parecer' }, ult.parecer || 'Sem recado nesta avaliação.')),
       h('a', { class: 'btn primary grande', href: '#av-' + ult.id }, 'Ver a avaliação completa ›')];
@@ -1069,7 +1063,7 @@ function iniciar() {
       h('div', { class: 'lista-av' }, [...avs].reverse().map((v, i) => { const c = K.calcular(eu, v);
         return h('a', { class: 'linha-lista', href: '#av-' + v.id },
           h('span', { class: 's-tit' }, h('strong', null, dataBR(v.data), i === 0 ? h('span', { class: 'chip destaque-coral' }, 'Mais recente') : null),
-            h('span', null, [c.gordura == null ? null : `Gordura ${fmt(c.gordura)}%`, c.massaMuscular == null ? null : `Músculo ${fmt(c.massaMuscular)} kg`, `${fmt(v.peso)} kg`].filter(Boolean).join(' · '))),
+            h('span', null, [c.gordura == null ? null : `Gordura ${fmt(c.gordura)}%`, c.massaMuscular == null ? null : `Músculo ${fmt(c.massaMuscular)} kg`, c.peso == null ? null : `${fmt(c.peso)} kg`].filter(Boolean).join(' · '))),
           h('span', { class: 'seta-dir', 'aria-hidden': 'true' })); }))];
   }
   function alunoEvolucao() {
@@ -1085,7 +1079,7 @@ function iniciar() {
     const pri = avs[0], ult = avs.at(-1), c0 = K.calcular(eu, pri), c = K.calcular(eu, ult);
     const mud = [['Gordura', c0.gordura, c.gordura, '%', -1], ['Massa muscular', c0.massaMuscular, c.massaMuscular, 'kg', 1], ['Cintura', pri.perimetros?.cintura, ult.perimetros?.cintura, 'cm', -1],
       ['Supino (1RM)', c0.supino1RM, c.supino1RM, 'kg', 1], ['Flexão de braço', c0.testes.flexao, c.testes.flexao, 'rep.', 1, 0], ['Abdominal (1 min)', c0.testes.abdominal, c.testes.abdominal, 'rep.', 1, 0],
-      ['VO₂máx', c0.testes.vo2, c.testes.vo2, '', 1], ['Peso', Number(pri.peso), Number(ult.peso), 'kg', 0]]
+      ['VO₂máx', c0.testes.vo2, c.testes.vo2, '', 1], ['Peso', c0.peso, c.peso, 'kg', 0]]
       .filter(([, x, y]) => Number.isFinite(x) && Number.isFinite(y));
     return [titulo,
       series.length > 1 ? h('div', { class: 'seletor', role: 'group', 'aria-label': 'Medida do gráfico' }, series.map(sr => h('button', { type: 'button', 'aria-pressed': String(sr === atual),

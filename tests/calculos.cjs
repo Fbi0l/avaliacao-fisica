@@ -231,4 +231,13 @@ for (const sexo of ['M', 'F']) for (const idade of [18, 25, 35, 45, 55, 70]) for
   assert.equal(rp.posturaAvaliada, true); assert.deepEqual(rp.alteracoesPosturais, []); assert.equal(rp.obsPostura, 'ok');
   assert.equal(C.calcular(aluna, av).posturaAvaliada, false, 'avaliação antiga');
 }
+// Sem peso e altura (0.10.0): nada quebra, o que depende deles fica vazio
+{
+  const r0 = C.calcular(aluna, { data: '2026-10-14', peso: null, altura: null, perimetros: { cintura: 71 }, dobras: av.dobras, forca: { supino: { carga: 38, reps: 8 } }, testes: { flexao: 20 } });
+  assert.equal(r0.imc, null); assert.equal(r0.peso, null); assert.equal(r0.massaGorda, null); assert.equal(r0.massaMagra, null);
+  perto(r0.gordura, 18.941, 1e-9, 'Faulkner não precisa de peso'); assert.equal(r0.massaMuscular, null, 'Lee precisa da altura');
+  perto(r0.supino1RM, 48.1333, 0.001, '1RM sai'); assert.equal(r0.supinoRelativo, null); assert.equal(r0.classeSupino, null, 'classe precisa do peso');
+  assert.deepEqual(r0.zPerimetros, {}, 'proporção precisa da altura'); assert.equal(r0.testes.classeFlexao.texto, 'Muito bom');
+  assert.equal(C.calcular(aluna, { data: '2026-10-14', peso: 63.8, altura: null, perimetros: {}, dobras: {} }).imc, null);
+}
 console.log('Cálculos aprovados: idade, Faulkner, Petroski, Lee, Phantom, Epley, força (inclusive outros exercícios), FC máxima de Tanaka, zonas de FC e de carga, testes físicos (flexão, abdominal, Cooper, flexiteste), avaliação postural, faixas de gordura, pressão e exames.');

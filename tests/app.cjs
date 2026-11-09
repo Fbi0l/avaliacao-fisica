@@ -59,7 +59,7 @@ assert.deepEqual(registro, {
 assert.equal(A.montarAvaliacao({ ...A.rascunhoVazio('2026-10-14'), peso: '70', altura: '172' }, '2026-11-04').registro.altura, 1.72);
 // Erros com mensagem clara
 const erro = (extra, re) => { const e = A.montarAvaliacao({ ...A.rascunhoVazio('2026-10-14', 1.7), peso: '70', ...extra }, '2026-11-04').erros; assert.ok(e.some(m => re.test(m)), `${JSON.stringify(extra)} → ${e}`); };
-erro({ peso: '' }, /Peso/); erro({ altura: '3' }, /Altura/); erro({ data: '2027-01-01' }, /futura/);
+erro({ altura: '3' }, /Altura/); erro({ data: '2027-01-01' }, /futura/);
 erro({ pas: '120' }, /duas medidas/); erro({ pas: '80', pad: '90' }, /menor que a sistólica/);
 erro({ per: { cintura: '900' } }, /Cintura/); erro({ dob1: { triceps: 'abc' } }, /Tríceps/); erro({ dob2: { coxa: '20' } }, /1ª medida/);
 erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Leg press: repetições/); erro({ parecer: 'x'.repeat(4001) }, /4000/);
@@ -158,6 +158,20 @@ erro({ supC: '40' }, /Supino: preencha/); erro({ legC: '100', legR: '2,5' }, /Le
   assert.equal(A.filtrosDoAluno({ usuario_id: null }, undefined, hoje).semAcesso, true);
   assert.deepEqual(A.filtrosDoAluno({ usuario_id: null, exemplo: true }, undefined, hoje), { reavaliar: false, semAcesso: false }, 'exemplo fora dos filtros');
   assert.equal(A.DIAS_REAVALIAR, 90);
+}
+
+// 0.10.0: etapas independentes, peso e altura opcionais, mas a avaliação precisa ter alguma coisa
+{
+  const vazio = { ...A.rascunhoVazio('2026-10-14'), altura: '' };
+  assert.ok(A.montarAvaliacao(vazio, '2026-11-04').erros.some(m => /pelo menos uma medida/.test(m)), 'avaliação vazia é recusada');
+  const soTestes = A.montarAvaliacao({ ...vazio, testes: { ...A.testesVazios(), flexao: '20' } }, '2026-11-04');
+  assert.deepEqual(soTestes.erros, []); assert.equal(soTestes.registro.peso, null); assert.equal(soTestes.registro.altura, null);
+  const soPerimetros = A.montarAvaliacao({ ...vazio, per: { cintura: '80' } }, '2026-11-04');
+  assert.deepEqual(soPerimetros.erros, [], 'perímetros sem dobras');
+  assert.deepEqual(A.montarAvaliacao({ ...vazio, postura: { feita: true, itens: {} } }, '2026-11-04').erros, [], 'só a postura');
+  assert.deepEqual(A.montarAvaliacao({ ...vazio, parecer: 'Conversa inicial.' }, '2026-11-04').erros, [], 'só o parecer');
+  assert.deepEqual(A.montarAvaliacao({ ...vazio, peso: '70' }, '2026-11-04').erros, [], 'só o peso');
+  assert.equal(A.temAlgumaMedida({ perimetros: {}, dobras: {}, forca: {}, testes: {}, postura: {}, parecer: null }), false);
 }
 
 // Guia de uso revisado a cada versão (pedido do dono em 09/11/2026)

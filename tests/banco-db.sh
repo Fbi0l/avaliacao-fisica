@@ -78,6 +78,10 @@ for ruim in '{"itens":{"lombar":"torta"}}' '{"itens":{"nariz":"torto"}}' '{"iten
 done
 recusa "recusa observação longa" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura, postura) values ('$ALUNA',60,1.6,jsonb_build_object('itens','{}'::jsonb,'obs',repeat('x',1001))) returning id")"
 q -d $B -c "delete from public.avaliacoes where postura <> '{}'"
+# 0.10.0: peso e altura opcionais (etapas independentes)
+confere "aceita avaliação sem peso e altura" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, testes) values ('$ALUNA','{\"flexao\":20}') returning coalesce(peso::text, 'sem peso')")" "sem peso"
+recusa "peso fora da faixa continua recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso) values ('$ALUNA',5) returning id")"
+q -d $B -c "delete from public.avaliacoes where peso is null"
 recusa "peso absurdo é recusado" "$(como authenticated $P1 "insert into public.avaliacoes (aluno_id, peso, altura) values ('$ALUNA',600,1.6) returning id")"
 confere "avaliação antiga fica com Faulkner" "$(q -d $B -c "select equacao_gordura from public.avaliacoes where id='$AVAL'")" "faulkner"
 confere "personal troca a equação para Petroski" "$(como authenticated $P1 "update public.avaliacoes set equacao_gordura='petroski' where id='$AVAL' returning equacao_gordura")" "petroski"

@@ -343,28 +343,30 @@ function classeExame(chave, valor) {
  */
 function calcular(aluno, av) {
   const idade = idadeEm(aluno.nascimento, av.data);
-  const peso = Number(av.peso), altura = Number(av.altura), alturaCm = altura * 100;
+  // Peso e altura são opcionais (0.10.0): sem eles, o que depende deles fica vazio e o resto é calculado normalmente.
+  const numero = x => x == null || x === '' ? null : Number(x);
+  const peso = numero(av.peso), altura = numero(av.altura), alturaCm = ok(altura) ? altura * 100 : null;
   const per = av.perimetros || {}, d = {};
   DOBRAS.forEach(([k]) => { d[k] = mediaDobra((av.dobras || {})[k]); });
   const todas = DOBRAS.every(([k]) => ok(d[k]));
   const soma = (...ks) => ks.every(k => ok(d[k])) ? ks.reduce((s, k) => s + d[k], 0) : null;
   const equacaoGordura = equacaoDe(av);
   const gordura = equacaoGordura === 'petroski' ? gorduraPetroski(d, aluno.sexo, idade, peso, alturaCm) : gorduraFaulkner(d);
-  const massaGorda = ok(gordura) ? peso * gordura / 100 : null;
+  const massaGorda = ok(gordura) && ok(peso) ? peso * gordura / 100 : null;
   const massaMuscular = massaMuscularLee({ alturaM: altura, sexo: aluno.sexo, idade, bracoD: per.bracoD, coxaMedD: per.coxaMedD, pantD: per.pantD, triceps: d.triceps, coxa: d.coxa, panturrilha: d.panturrilha });
-  const zMuscular = ok(massaMuscular) ? zPhantom(massaMuscular, alturaCm, ...PHANTOM_MUSCULO, 3) : null;
+  const zMuscular = ok(massaMuscular) && ok(alturaCm) ? zPhantom(massaMuscular, alturaCm, ...PHANTOM_MUSCULO, 3) : null;
   const fcMaxima = fcMaximaTanaka(idade);
   const forca = av.forca || {};
   const sup = umRM(forca.supino?.carga, forca.supino?.reps), leg = umRM(forca.leg_press?.carga, forca.leg_press?.reps);
   const outros = (Array.isArray(forca.outros) ? forca.outros : []).map(o => {
     const rm = umRM(o.carga, o.reps);
-    return { nome: o.nome, carga: o.carga, reps: o.reps, rm, relativo: ok(rm) ? rm / peso : null };
+    return { nome: o.nome, carga: o.carga, reps: o.reps, rm, relativo: ok(rm) && ok(peso) ? rm / peso : null };
   });
   const zPerimetros = {}, zDobras = {};
-  for (const [k, [m, s]] of Object.entries(PHANTOM_PERIMETROS)) if (ok(per[k])) zPerimetros[k] = zPhantom(per[k], alturaCm, m, s);
-  for (const [k, [m, s]] of Object.entries(PHANTOM_DOBRAS)) if (ok(d[k])) zDobras[k] = zPhantom(d[k], alturaCm, m, s);
+  for (const [k, [m, s]] of Object.entries(PHANTOM_PERIMETROS)) if (ok(per[k]) && ok(alturaCm)) zPerimetros[k] = zPhantom(per[k], alturaCm, m, s);
+  for (const [k, [m, s]] of Object.entries(PHANTOM_DOBRAS)) if (ok(d[k]) && ok(alturaCm)) zDobras[k] = zPhantom(d[k], alturaCm, m, s);
   return {
-    idade, imc: peso / (altura * altura), dobras: d,
+    idade, peso, altura, imc: ok(peso) && ok(altura) ? peso / (altura * altura) : null, dobras: d,
     somaDobras: todas ? soma(...DOBRAS.map(([k]) => k)) : null,
     dobrasPerifericas: soma('triceps', 'biceps', 'coxa', 'panturrilha'),
     dobrasCentrais: soma('subesc', 'iliaca', 'supraesp', 'abdominal'),
@@ -374,8 +376,8 @@ function calcular(aluno, av) {
     perimetroMuscularBraco: ok(per.bracoD) && ok(d.triceps) ? per.bracoD - Math.PI * d.triceps / 10 : null,
     fcMaxima, fcReserva: ok(av.fc_repouso) && ok(fcMaxima) ? fcMaxima - av.fc_repouso : null,
     pressao: classePressao(av.pas, av.pad),
-    supino1RM: sup, supinoRelativo: ok(sup) ? sup / peso : null, classeSupino: ok(sup) ? classeSupino(sup / peso, aluno.sexo, idade) : null,
-    legPress1RM: leg, legPressRelativo: ok(leg) ? leg / peso : null, classeLegPress: ok(leg) ? classeLegPress(leg / peso, aluno.sexo, idade) : null,
+    supino1RM: sup, supinoRelativo: ok(sup) && ok(peso) ? sup / peso : null, classeSupino: ok(sup) && ok(peso) ? classeSupino(sup / peso, aluno.sexo, idade) : null,
+    legPress1RM: leg, legPressRelativo: ok(leg) && ok(peso) ? leg / peso : null, classeLegPress: ok(leg) && ok(peso) ? classeLegPress(leg / peso, aluno.sexo, idade) : null,
     outrosExercicios: outros,
     exercicios1RM: [['Supino reto', sup], ['Leg press', leg], ...outros.map(o => [o.nome, o.rm])].filter(([, rm]) => ok(rm)).map(([nome, rm]) => ({ nome, rm })),
     zonasFC: zonasFC(fcMaxima, ok(av.fc_repouso) ? Number(av.fc_repouso) : null),
