@@ -17,12 +17,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=1.2.0">
+  <link rel="stylesheet" href="styles.css?v=1.3.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="tema.js?v=1.2.0"></script>
-  <script src="calculos.js?v=1.2.0" defer></script>
-  <script src="treino.js?v=1.2.0" defer></script>
-  <script src="app.js?v=1.2.0" defer></script>
+  <script src="tema.js?v=1.3.0"></script>
+  <script src="calculos.js?v=1.3.0" defer></script>
+  <script src="treino.js?v=1.3.0" defer></script>
+  <script src="app.js?v=1.3.0" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -38,7 +38,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 1.2.0</footer>
+    <footer class="rodape">Versão 1.3.0 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -96,6 +96,7 @@
             <p id="contaNome" class="conta-nome"></p>
             <button id="perfilBtn" class="hidden" type="button" role="menuitem">Meus dados</button>
             <button id="personaisBtn" class="hidden" type="button" role="menuitem">Personais</button>
+            <button id="sobreBtn" type="button" role="menuitem" data-sobre>Sobre o app</button>
             <p class="tema-rotulo" id="temaRotulo">Tema</p>
             <div class="tema-escolha" role="group" aria-labelledby="temaRotulo">
               <button type="button" role="menuitemradio" data-tema="auto" aria-checked="true" aria-label="Automático, igual ao aparelho" title="Igual ao aparelho">Auto</button>
@@ -119,7 +120,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 1.2.0</footer>
+    <footer class="rodape">Versão 1.3.0 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
     <nav id="navAluno" class="nav-aluno hidden" aria-label="Navegação principal">
       <a href="#inicio" data-aba="inicio"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Início</a>
       <a href="#treino" data-aba="treino"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Treino</a>
@@ -218,6 +219,46 @@
       <h2 id="confTitulo">Confirmar</h2>
       <p id="confTexto" class="muted"></p>
       <div class="dialogo-acoes"><span class="espaco"></span><button id="confNao" class="btn" type="button">Cancelar</button><button id="confSim" class="btn perigo" type="button">Excluir</button></div>
+    </div>
+  </dialog>
+  <dialog id="sobreDialog" class="dialogo dialogo-sobre" aria-labelledby="sobreTitulo">
+    <div class="dialogo-form">
+      <div class="dialogo-topo"><h2 id="sobreTitulo">Sobre o app</h2><button class="btn ghost icone" type="button" data-fechar aria-label="Fechar">✕</button></div>
+      <article class="sobre">
+        <h3>1 Introdução</h3>
+        <p>Este texto apresenta as razões que levaram ao desenvolvimento do Avaliação Física, sistema usado por personal trainers para registrar avaliações físicas, acompanhar a evolução dos alunos e montar fichas de treino. Ele descreve como o trabalho era feito antes, o que o sistema passou a oferecer e por que ele é útil.</p>
+        <p>O sistema tem duas áreas: a do personal, que avalia e prescreve, e a do aluno, que acompanha os próprios resultados e registra os treinos. Funciona no navegador e pode ser instalado no celular. Foi desenvolvido internamente, é atualizado em versões indicadas no rodapé, e o nome ainda é provisório.</p>
+        <h3>2 Desenvolvimento</h3>
+        <h4>2.1 Como o trabalho era feito</h4>
+        <p>As avaliações eram registradas em uma planilha, que reunia as medidas e as fórmulas de cálculo. Ela cumpria o papel básico, mas tinha erros que passavam despercebidos: a faixa considerada adequada de gordura valia para um único valor exato, a massa adiposa misturava percentual e quilos, e o leg press era classificado pela tabela do supino.</p>
+        <p>Além disso, a planilha não mostrava a evolução de forma simples e não permitia que cada aluno visse os próprios resultados sem ter acesso aos dados dos outros. O treino era acompanhado à parte, sem ligação com a avaliação.</p>
+        <h4>2.2 Finalidade do sistema</h4>
+        <p>O sistema foi criado para reunir a avaliação, a evolução e o treino de cada aluno em um só lugar, com cálculos corretos e acesso separado para o personal e para o aluno. Com isso, pretende-se:</p>
+        <ol class="alineas">
+          <li>registrar avaliações completas ou parciais, sem etapa obrigatória;</li>
+          <li>calcular automaticamente a composição corporal, a força, os testes físicos e as classificações, a partir de referências publicadas;</li>
+          <li>mostrar a evolução do aluno em gráficos e comparar duas avaliações quaisquer;</li>
+          <li>dar ao aluno acesso aos próprios resultados, em linguagem simples;</li>
+          <li>organizar a prescrição de treino e acompanhar a execução;</li>
+          <li>tratar os dados de saúde de acordo com a legislação de proteção de dados.</li>
+        </ol>
+        <h4>2.3 Funcionamento</h4>
+        <p>O personal cadastra o aluno e registra a avaliação em até oito etapas: dados básicos, exames, perímetros, dobras cutâneas, força, testes físicos, postura e parecer. Nenhuma delas é obrigatória, e o sistema calcula o que for possível com o que foi preenchido. Entre os resultados estão o percentual de gordura (pelas equações de Faulkner ou de Petroski), a massa muscular, a estimativa de uma repetição máxima, a frequência cardíaca de treino e a classificação da pressão arterial pela Diretriz Brasileira de 2020.</p>
+        <p>O aluno entra por um convite de uso único. Antes de criar a senha, ele aceita o termo de uso dos dados de saúde. A partir daí, vê as próprias avaliações e a evolução, recebe a ficha de treino, marca os exercícios feitos com a carga usada e conversa com o personal por mensagens.</p>
+        <p>Na parte de treino, o personal monta fichas com objetivo, divisão e exercícios, acompanha a frequência e as cargas anotadas pelo aluno e, se quiser, divide o planejamento em blocos de algumas semanas (periodização).</p>
+        <h4>2.4 Benefícios</h4>
+        <p>Para o personal, o ganho principal é de tempo e de segurança nos números. Os cálculos aparecem enquanto as medidas são digitadas, o resultado fica pronto para imprimir ou salvar em PDF, e a lista de alunos indica quem está há mais de três meses sem reavaliação.</p>
+        <p>Para o aluno, a vantagem é acompanhar a própria evolução sem esperar o envio de um arquivo, entender os resultados sem termos técnicos e ter o treino do dia no celular.</p>
+        <p>Há também um ganho de qualidade. As fórmulas foram corrigidas e são testadas a cada versão. Como o banco guarda apenas as medidas e os resultados são calculados pelo aplicativo, a correção de uma fórmula vale também para as avaliações antigas.</p>
+        <h4>2.5 Proteção dos dados de saúde</h4>
+        <p>Dados de saúde são considerados dados pessoais sensíveis pela Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018, art. 5º, inciso II) e exigem cuidado maior. Por isso, o aceite do termo fica registrado com a versão do texto, cada personal vê apenas os próprios alunos e cada aluno vê apenas os próprios dados. A pedido, o aluno pode ser excluído por completo, junto com as avaliações, as mensagens e o acesso.</p>
+        <p>O sistema também encerra a sessão após 30 minutos sem uso e recusa senhas que aparecem em vazamentos conhecidos. Uma rotina de backup diário criptografado já está preparada e será ligada antes do uso com alunos reais.</p>
+        <h4>2.6 Custos</h4>
+        <p>O sistema foi desenvolvido internamente e usa serviços gratuitos para hospedar o site e o banco de dados. Não há licença, mensalidade ou contrato com fornecedor.</p>
+        <h3>3 Considerações finais</h3>
+        <p>O Avaliação Física substitui uma planilha com erros de cálculo por um sistema que reúne avaliação, evolução e treino. Para o personal, isso representa menos trabalho manual e mais confiança nos resultados. Para o aluno, acesso direto ao próprio acompanhamento. Para ambos, o cuidado que os dados de saúde exigem.</p>
+      </article>
+      <div class="dialogo-acoes"><span class="espaco"></span><button class="btn primary" type="button" data-fechar>Fechar</button></div>
     </div>
   </dialog>
 </body>

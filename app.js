@@ -300,7 +300,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.2.0';
+const GUIA_REVISADO_NA_VERSAO = '1.3.0';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -328,7 +328,7 @@ const PASSOS_TUTORIAL_PERSONAL = [
     itens: ['“+ Montar ficha”: escolha o objetivo, a duração e a divisão (corpo inteiro, superior/inferior, ABC, empurrar/puxar/pernas, por dia da semana ou personalizada). Os nomes dos treinos são livres.', 'Em cada treino, “+ Da lista” traz exercícios prontos por grupo muscular; “+ Digitar exercício” aceita qualquer outro. Séries, repetições, carga, descanso e observação.', 'Se o aluno fez o 1RM do exercício na avaliação, o app mostra a % do 1RM e a faixa de carga do objetivo.', 'O aluno marca os treinos feitos e anota a carga: você vê a frequência, a % da meta e as cargas comparadas com a ficha.', '“Nova ficha” guarda a atual nas fichas anteriores; “Usar como base” copia uma ficha antiga.', 'Periodização (opcional): em “Planejar”, divida o treino em blocos (adaptação, hipertrofia, força…) com objetivo e semanas. Em cada bloco, “Montar ficha” já traz o objetivo, as semanas e as repetições; o app mostra em que bloco e semana o aluno está.'] },
   { icone: '?', titulo: 'Pronto para começar',
     texto: 'Informe seu nome (e CREF, se quiser) em “Meus dados”: seus alunos veem isso no app.',
-    itens: ['“Meus dados”, “Personais”, o tema (Auto, igual ao aparelho, Claro ou Escuro) e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
+    itens: ['“Meus dados”, “Personais”, “Sobre o app”, o tema (Auto, igual ao aparelho, Claro ou Escuro) e “Sair” ficam no menu da conta: o círculo com as suas iniciais, no topo à direita.', 'Por segurança, o app sai sozinho depois de 30 minutos sem uso.', 'Para rever este guia, toque em “?” no topo.'] }
 ];
 const PASSOS_TUTORIAL_ALUNO = [
   { icone: '✦', titulo: 'Bem-vindo!',
@@ -351,7 +351,7 @@ const PASSOS_TUTORIAL_ALUNO = [
     itens: ['O número em coral na aba Mensagens mostra quantas você ainda não leu.', 'Quando o personal envia uma avaliação, toque no cartão para abrir.', '“lida” embaixo da sua mensagem quer dizer que o personal já viu.', 'Só você e o seu personal leem a conversa.'] },
   { icone: '?', titulo: 'Perfil e seus dados',
     texto: 'Na aba Perfil você revê este guia e sai do app.',
-    itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'No círculo com as suas iniciais, no topo, você escolhe o tema: Auto (igual ao celular), Claro ou Escuro.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
+    itens: ['Para corrigir alguma informação ou pedir a exclusão dos seus dados, fale com o seu personal.', 'No círculo com as suas iniciais, no topo, você escolhe o tema: Auto (igual ao celular), Claro ou Escuro. Ali também fica “Sobre o app”, que explica por que ele foi criado.', 'Para rever este guia, toque em “?” no topo ou em “Como usar o app”, no Perfil.'] }
 ];
 /** Mostra o guia sozinho só se a pessoa ainda não o viu (no perfil dela ou neste aparelho). */
 function deveMostrarTutorial(metadados, vistoNoAparelho) {
@@ -473,6 +473,8 @@ function iniciar() {
     });
   }
   document.querySelectorAll('[data-fechar]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+  // Sobre o app (1.3.0): texto fixo no index.html, aberto pelo menu da conta e pelo rodapé.
+  document.querySelectorAll('[data-sobre]').forEach(b => b.addEventListener('click', () => { const d = $('sobreDialog'); if (!d.open) d.showModal(); d.querySelector('.sobre').scrollTop = 0; }));
 
   /* ----- Dados ----- */
   async function carregarPersonal() {

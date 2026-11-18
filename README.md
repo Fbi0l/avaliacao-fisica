@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.3.0 — Sobre o app
+
+- **Sobre o app**, no menu da conta (o círculo com as iniciais) e no rodapé: explica por que o app foi criado, para que serve, como funciona, os benefícios e os cuidados com os dados de saúde, no padrão de numeração da ABNT. Vale para personal e aluno; o texto é fixo e não usa dados do banco.
+- Guia de uso atualizado (personal e aluno) com o novo item do menu.
+
 ## Versão 1.2.0 — Periodização por blocos
 
 - **Periodização (opcional)** na aba Treino do aluno: "Planejar" divide o treino em blocos (mesociclos) com nome, objetivo, semanas e observação. Começa de um modelo (hipertrofia com força 16 semanas, força 12, emagrecimento 12, saúde 12) ou do zero, com até 12 blocos.
