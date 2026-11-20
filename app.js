@@ -300,7 +300,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.3.2';
+const GUIA_REVISADO_NA_VERSAO = '1.3.3';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -1655,7 +1655,8 @@ function iniciar() {
     const texto = total > 99 ? '99+' : String(total), rotulo = total ? `Mensagens, ${total} não ${total === 1 ? 'lida' : 'lidas'}` : 'Mensagens';
     for (const id of ['msgBadge', 'navMsgBadge']) { $(id).textContent = texto; $(id).classList.toggle('hidden', !total); }
     $('msgBtn').setAttribute('aria-label', rotulo); $('msgBtn').title = rotulo;
-    document.querySelector('#navAluno a[data-aba="mensagens"]')?.setAttribute('aria-label', rotulo);
+    // Na aba do aluno o nome vem do texto visível (WCAG 2.5.3): o número fica no selo e o resto só para leitores de tela.
+    $('navMsgSr').textContent = total ? ` não ${total === 1 ? 'lida' : 'lidas'}` : '';
     if (est.papel === 'personal' && !$('listaAlunos').contains(document.activeElement)) desenharLista(est.listaAtual ?? null);
   }
   /** "14 out" (com o ano se não for deste ano), como nos cartões do design. */
