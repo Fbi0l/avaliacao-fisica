@@ -300,7 +300,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.3.1';
+const GUIA_REVISADO_NA_VERSAO = '1.3.2';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',
@@ -634,23 +634,23 @@ function iniciar() {
           c.somaDobras != null ? kpi('Σ 8 dobras', fmt(c.somaDobras, 0), 'mm', h('span', { class: 'sub num' }, `Periférico ${fmt(c.dobrasPerifericas, 0)} · Central ${fmt(c.dobrasCentrais, 0)}`)) : null) : null),
       nPer || nDob ? secao('Perímetros e dobras', [nPer ? `${nPer} ${nPer === 1 ? 'perímetro' : 'perímetros'}` : null, nDob ? `${nDob} ${nDob === 1 ? 'dobra' : 'dobras'}` : null].filter(Boolean).join(' · '), abre,
         h('div', { class: 'dois' },
-          nPer ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela' }, h('table', null,
+          nPer ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Perímetros (cm)'), h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Local'), h('th', { class: 'n' }, 'Medida'), h('th', null, 'Proporção'), h('th'))),
           h('tbody', null, K.PERIMETROS.filter(([k]) => v.perimetros?.[k] != null).map(([k, n]) => { const z = c.zPerimetros[k];
             return h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(v.perimetros[k])), z == null ? h('td') : regua(z), h('td', null, z == null ? null : chip(K.classeProporcao(z)))); }),
             c.perimetroMuscularBraco == null ? null : h('tr', null, h('td', null, 'Perímetro muscular do braço'), h('td', { class: 'n' }, fmt(c.perimetroMuscularBraco)), h('td'), h('td')))))) : null,
-          nDob ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela' }, h('table', null,
+          nDob ? h('div', null, h('h3', { class: 'titulo-secao' }, 'Dobras cutâneas (mm)'), h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Dobra'), h('th', { class: 'n' }, 'Média'), h('th', null, 'Proporção'), h('th'))),
           h('tbody', null, K.DOBRAS.filter(([k]) => c.dobras[k] != null).map(([k, n]) => h('tr', null, h('td', null, n), h('td', { class: 'n' }, fmt(c.dobras[k])), regua(c.zDobras[k]), h('td', null, chip(K.classeProporcao(c.zDobras[k]))))))))) : null),
         c.altura == null ? h('p', { class: 'aviso' }, 'Sem a altura nesta avaliação, a proporção (modelo Phantom) não é calculada.') : h('p', { class: 'aviso' }, 'Proporção compara a medida com um corpo de referência ajustado à altura do aluno (modelo Phantom). O ponto no meio da régua é a média.')) : null,
-      c.exercicios1RM.length ? secao('Força (1RM)', resumoForca, abre, h('div', { class: 'tabela' }, h('table', null,
+      c.exercicios1RM.length ? secao('Força (1RM)', resumoForca, abre, h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null,
           h('thead', null, h('tr', null, h('th', null, 'Exercício'), h('th', { class: 'n' }, 'Carga × reps'), h('th', { class: 'n' }, '1RM'), h('th', { class: 'n' }, '÷ peso'), h('th', null, 'Classificação'))),
           h('tbody', null, forca('Supino reto', v.forca?.supino, c.supino1RM, c.supinoRelativo, c.supino1RM == null ? null : chip(c.classeSupino)),
             forca('Leg press', v.forca?.leg_press, c.legPress1RM, c.legPressRelativo, c.legPress1RM == null ? null : chip(c.classeLegPress)),
             c.outrosExercicios.map(o => forca(o.nome, o, o.rm, o.relativo, h('span', { class: 'sub' }, 'sem tabela')))))), h('p', { class: 'aviso' }, '1RM pela fórmula de Epley. Supino e leg press têm tabela de classificação; os outros exercícios mostram o 1RM para acompanhar a evolução. Leg press classificado pela tabela do ACSM, feita em leg press de cadeira: no leg press 45° a carga costuma ser maior e a classificação pode sair acima do real.')) : null,
       cardTestes(c.testes, abre),
       cardPostura(c, abre),
-      v.fc_repouso != null || v.pas != null || Object.keys(K.EXAMES).some(k => v[k] != null) ? secao('Coração e exames', resumoCoracao || null, abre, h('div', { class: 'tabela' }, h('table', null, h('tbody', null,
+      v.fc_repouso != null || v.pas != null || Object.keys(K.EXAMES).some(k => v[k] != null) ? secao('Coração e exames', resumoCoracao || null, abre, h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null, h('tbody', null,
           h('tr', null, h('td', null, 'FC repouso / máxima / reserva ', h('span', { class: 'sub' }, '(máxima por Tanaka)')), h('td', { class: 'n' }, `${v.fc_repouso ?? '—'} / ${c.fcMaxima} / ${c.fcReserva ?? '—'} bpm`), h('td')),
           v.pas == null ? null : h('tr', null, h('td', null, 'Pressão arterial'), h('td', { class: 'n' }, `${v.pas}/${v.pad} mmHg`), h('td', null, chip(c.pressao))),
           Object.entries(K.EXAMES).filter(([k]) => v[k] != null).map(([k, e]) => h('tr', null, h('td', null, e.nome, ' ', h('span', { class: 'sub' }, `(ref. ${e.referencia})`)), h('td', { class: 'n' }, `${fmt(v[k], 0)} ${e.unidade}`), h('td', null, chip(K.classeExame(k, Number(v[k])))))))))) : null,
@@ -675,7 +675,7 @@ function iniciar() {
       flex.length ? 'flexiteste' : null].filter(Boolean).join(', ');
     return secao('Testes físicos', resumo ? resumo[0].toUpperCase() + resumo.slice(1) : null, aberto,
       h('div', { class: 'dois-zonas' },
-        h('div', null, linhas.length ? h('div', { class: 'tabela' }, h('table', null, h('tbody', null, linhas))) : h('p', { class: 'sub' }, 'Sem testes de resistência ou aeróbico nesta avaliação.'),
+        h('div', null, linhas.length ? h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null, h('tbody', null, linhas))) : h('p', { class: 'sub' }, 'Sem testes de resistência ou aeróbico nesta avaliação.'),
           linhas.length ? h('p', { class: 'aviso' }, 'Flexão: CSEP/ACSM (mulheres com os joelhos no chão). Abdominal: Pollock e Wilmore (1993). VO₂máx pela distância do Cooper, classificado pelo Cooper Institute.') : null),
         h('div', null, flex.length ? [
           h('h4', { class: 'sub-titulo' }, `Flexiteste · ${tt.flexindice != null ? `Flexíndice ${tt.flexindice} de 80` : `soma ${tt.somaFlexiteste} de ${flex.length * 4} (${flex.length} movimentos)`}`),
@@ -704,7 +704,7 @@ function iniciar() {
   function secaoZonas({ fc, exercicios, paraAluno, dataFC, aberto }) {
     const tabelaFC = !fc ? null : h('div', null,
       h('h4', { class: 'sub-titulo' }, 'Frequência cardíaca'),
-      h('div', { class: 'tabela' }, h('table', null,
+      h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null,
         h('thead', null, h('tr', null, h('th', null, 'Zona'), h('th', { class: 'n' }, 'bpm'), h('th', null, 'Para quê'))),
         h('tbody', null, fc.zonas.map(z => h('tr', null, h('td', null, h('span', { class: `zona z${z.zona}` }, z.zona), ' ', z.nome, ' ', h('span', { class: 'sub' }, `${z.de}–${z.ate}%`)),
           h('td', { class: 'n' }, `${z.min}–${z.max}`), h('td', { class: 'sub' }, z.uso)))))),
@@ -817,7 +817,7 @@ function iniciar() {
     atualizar();
     return h('section', { class: 'card' }, h('div', { class: 'card-topo' }, h('div', null, h('h2', null, 'Comparar avaliações'), h('p', { class: 'sub' }, 'Escolha quaisquer duas.')),
       h('div', { class: 'linha' }, h('label', { class: 'campo' }, 'Avaliação A', sa), h('label', { class: 'campo' }, 'Avaliação B', sb))),
-      h('div', { class: 'tabela' }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'Medida'), h('th', { class: 'n' }, 'A'), h('th', { class: 'n' }, 'B'), h('th', { class: 'n' }, 'Diferença'))), corpo)));
+      h('div', { class: 'tabela', tabindex: '0', role: 'region', 'aria-label': 'Tabela (role para o lado para ver tudo)' }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'Medida'), h('th', { class: 'n' }, 'A'), h('th', { class: 'n' }, 'B'), h('th', { class: 'n' }, 'Diferença'))), corpo)));
   }
 
   /* ----- Nova avaliação / editar, em etapas ----- */
@@ -1346,9 +1346,11 @@ function iniciar() {
             h('select', { onchange: ev => { r.divisao = ev.target.value; r.treinos = T.trocarDivisao(r.treinos, r.divisao); if (T.DIVISOES[r.divisao].vezes) r.vezes_semana = T.DIVISOES[r.divisao].vezes; R.atual = 0; desenhar(); } },
               Object.entries(T.DIVISOES).map(([k, d]) => h('option', { value: k, selected: r.divisao === k }, `${d.nome} — ${d.desc}`)))),
           h('p', { class: 'sub' }, 'Trocar o modelo mantém os exercícios já colocados. Os nomes dos treinos podem ser mudados à vontade.'),
-          h('div', { class: 'abas-treino', role: 'tablist', 'aria-label': 'Treinos da ficha' },
-            r.treinos.map((x, i) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(i === R.atual), onclick: () => { R.atual = i; desenhar(); } },
-              x.nome || `Treino ${i + 1}`, h('span', { class: 'sub' }, ` ${x.exercicios.length}`))),
+          // O "+" fica fora da lista de abas: dentro de um tablist só pode haver abas (acessibilidade, 1.3.2).
+          h('div', { class: 'abas-treino' },
+            h('div', { class: 'abas-treino-lista', role: 'tablist', 'aria-label': 'Treinos da ficha' },
+              r.treinos.map((x, i) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(i === R.atual), onclick: () => { R.atual = i; desenhar(); } },
+                x.nome || `Treino ${i + 1}`, h('span', { class: 'sub' }, ` ${x.exercicios.length}`)))),
             r.treinos.length < T.TREINO_LIMITES.treinos ? h('button', { type: 'button', class: 'mais', 'aria-label': 'Acrescentar treino',
               onclick: () => { r.treinos.push({ nome: `Treino ${r.treinos.length + 1}`, exercicios: [] }); if (r.divisao !== 'personalizada' && r.treinos.length > T.DIVISOES[r.divisao].treinos.length) r.divisao = 'personalizada'; R.atual = r.treinos.length - 1; desenhar(); } }, '+') : null)),
         h('section', { class: 'card' },

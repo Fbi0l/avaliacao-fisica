@@ -2,6 +2,12 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.3.2 — Testes no navegador e acessibilidade
+
+- **Teste no navegador (automático):** a cada envio ao GitHub, o workflow **Teste no navegador** abre o app num Chrome de teste com um Supabase **falso** (`tests/navegador/supabase-falso.js`, sem internet e sem dados reais; as avaliações são as da Mariana de exemplo) e confere a entrada, a senha errada, o convite com o termo dos dados de saúde, todas as telas do personal e do aluno, no computador e no celular, sem erro de JavaScript e sem rolagem lateral. Também roda o **axe** e falha com problema de acessibilidade sério ou crítico (WCAG 2.2 AA). Os prints ficam nos artefatos do workflow. No computador: `npm install`, `npx playwright install chromium` e `npm run test:navegador`.
+- **Acessibilidade corrigida** (achada pelo teste): as tabelas com rolagem lateral (resultado e comparação) e o texto do "Sobre o app" agora rolam pelo teclado; nas abas de treino da ficha, o botão "+" saiu de dentro da lista de abas.
+- Guia de uso revisado, sem mudança de passos.
+
 ## Versão 1.3.1 — Termo do aluno e documentos da LGPD
 
 - **Termo do aluno atualizado** (versão 2026-11-20): diz que o administrador tem acesso técnico ao banco, onde ficam os dados (Supabase em São Paulo, site no GitHub), por quanto tempo são guardados, o direito de receber uma cópia e quem são os responsáveis. Vale para os próximos cadastros.

@@ -2,3 +2,4 @@ node_modules/
 *.dump
 *.dump.age
 .DS_Store
+test-results/

@@ -604,3 +604,6 @@ nav.seletor{margin:0 0 14px}
 .sobre .alineas{list-style:none;padding-left:0;margin:6px 0 12px;counter-reset:al}
 .sobre .alineas li{counter-increment:al;position:relative;padding-left:26px;margin:4px 0}
 .sobre .alineas li::before{content:counter(al,lower-alpha) ")";position:absolute;left:0}
+
+/* Acessibilidade (1.3.2): as abas de treino ficam num tablist só delas; o "+" fica ao lado. */
+.abas-treino-lista{display:contents}

@@ -54,6 +54,7 @@ A versão aparece em `index.html` (rodapés e `?v=`), `sw.js` (cache e lista) e 
 - `npm test`: cálculos, regras do formulário, função de cadastro e segurança do site (sem rede).
 - `npm run test:banco` (precisa de um PostgreSQL local em PGHOST/PGPORT): tabelas, regras de acesso, convites, visão do aluno e exclusão, sobre `tests/supabase-simulado.sql`.
 - `npm run test:backup` (idem, mais `age`): backup criptografado, restauração e comparação com a origem. Os dois rodam no GitHub em "Teste do backup".
+- `npm run test:navegador` (Playwright + axe; `CHROME_PATH=/usr/bin/google-chrome` se o `npx playwright install` não funcionar): entrada, convite com termo, todas as telas do personal e do aluno, computador e celular, acessibilidade WCAG 2.2 AA. Roda no GitHub em "Teste no navegador" (ubuntu-24.04). Supabase falso em `tests/navegador/supabase-falso.js`: tela nova ou tabela nova? acrescente lá e no `teste.mjs`.
 - Mudou algo? Rode os testes e acrescente um caso novo.
 
 ## Como publicar

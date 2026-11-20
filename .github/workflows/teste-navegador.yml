@@ -1,0 +1,38 @@
+name: Teste no navegador
+
+# A cada envio e pull request: abre o site num Chrome de teste com um Supabase FALSO (sem internet e sem
+# dados reais), percorre entrada, termo de uso e todas as telas no computador e no celular, e confere a
+# acessibilidade com o axe (WCAG 2.2 AA). Falha com erro de JavaScript ou problema sério de acessibilidade.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  navegador:
+    # ubuntu-24.04 fixo: o Playwright 1.56 ainda não instala o Chromium no ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Instalar o Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Testes
+        run: npm test && npm run test:navegador
+      - name: Guardar os prints das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prints-navegador-${{ github.run_id }}
+          path: test-results/navegador/
+          retention-days: 14
