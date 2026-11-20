@@ -5,7 +5,7 @@
 // Projeto Supabase "avaliacao-fisica" (São Paulo). Só o endereço e a chave PUBLICÁVEL; nunca a secreta.
 const SUPABASE_URL = 'https://rsgbuvjrkrrybzoacjrh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x1nqjAFBALSgKIXoaDxrXg_pBHxArki';
-const TERMO_VERSAO = '2026-11-10'; // igual ao da função registrar-aluno
+const TERMO_VERSAO = '2026-11-20'; // igual ao da função registrar-aluno
 const TERMO_PERSONAL_VERSAO = '2026-11-05'; // igual ao da função registrar-aluno
 const INATIVIDADE_MS = 30 * 60 * 1000;
 
@@ -300,7 +300,7 @@ const listaFalta = nomes => nomes.length <= 2 ? nomes.join(' e ') : `${nomes.sli
 /* ---------- Tutorial de primeiro acesso ---------- */
 // Toda versão nova: revise os passos abaixo (personal e aluno) e suba este número para a versão do package.json.
 // O teste tests/app.cjs recusa publicar com o guia sem revisão.
-const GUIA_REVISADO_NA_VERSAO = '1.3.0';
+const GUIA_REVISADO_NA_VERSAO = '1.3.1';
 const PASSOS_TUTORIAL_PERSONAL = [
   { icone: '✦', titulo: 'Bem-vindo ao app de avaliação física',
     texto: 'Aqui você cadastra seus alunos, registra avaliações e acompanha a evolução de cada um. Os cálculos saem prontos.',

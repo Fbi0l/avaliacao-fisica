@@ -2,6 +2,11 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.3.1 — Termo do aluno e documentos da LGPD
+
+- **Termo do aluno atualizado** (versão 2026-11-20): diz que o administrador tem acesso técnico ao banco, onde ficam os dados (Supabase em São Paulo, site no GitHub), por quanto tempo são guardados, o direito de receber uma cópia e quem são os responsáveis. Vale para os próximos cadastros.
+- Novos documentos em `docs/lgpd/`: **registro das operações de tratamento** (LGPD, art. 37) e **plano de resposta a incidentes** (Resolução CD/ANPD nº 15/2024).
+
 ## Versão 1.3.0 — Sobre o app
 
 - **Sobre o app**, no menu da conta (o círculo com as iniciais) e no rodapé: explica por que o app foi criado, para que serve, como funciona, os benefícios e os cuidados com os dados de saúde, no padrão de numeração da ABNT. Vale para personal e aluno; o texto é fixo e não usa dados do banco.

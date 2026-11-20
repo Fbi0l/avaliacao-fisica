@@ -17,12 +17,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Avaliação">
-  <link rel="stylesheet" href="styles.css?v=1.3.0">
+  <link rel="stylesheet" href="styles.css?v=1.3.1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-  <script src="tema.js?v=1.3.0"></script>
-  <script src="calculos.js?v=1.3.0" defer></script>
-  <script src="treino.js?v=1.3.0" defer></script>
-  <script src="app.js?v=1.3.0" defer></script>
+  <script src="tema.js?v=1.3.1"></script>
+  <script src="calculos.js?v=1.3.1" defer></script>
+  <script src="treino.js?v=1.3.1" defer></script>
+  <script src="app.js?v=1.3.1" defer></script>
 </head>
 <body>
   <div id="bootView" class="boot" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Carregando…</span></div>
@@ -38,7 +38,7 @@
       <p id="loginMsg" class="msg" role="alert" aria-live="assertive"></p>
       <small>Alunos entram pelo link de convite enviado pelo personal.</small>
     </form>
-    <footer class="rodape">Versão 1.3.0 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
+    <footer class="rodape">Versão 1.3.1 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
   </div>
 
   <div id="conviteView" class="entrada hidden">
@@ -52,11 +52,13 @@
           <p>Para acompanhar sua evolução, este app guarda as medidas das suas avaliações físicas: peso, altura, perímetros, dobras cutâneas, testes de força, frequência cardíaca, pressão arterial e, se você levar, exames de sangue. A lei (LGPD) considera esses dados de saúde e sensíveis.</p>
           <ul>
             <li><strong>Para quê:</strong> só para seu personal avaliar você, planejar seu treino e mostrar sua evolução.</li>
-            <li><strong>Quem vê:</strong> você e o seu personal. Ninguém mais tem acesso pelo app, e nada é vendido ou compartilhado.</li>
+            <li><strong>Quem vê:</strong> você e o seu personal. O administrador do app tem acesso técnico ao banco de dados, só para manutenção e segurança. Nada é vendido ou compartilhado.</li>
             <li><strong>Mensagens:</strong> as conversas com o seu personal pelo app também são seus dados: só vocês dois leem, e elas são apagadas junto se você pedir a exclusão.</li>
             <li><strong>Treinos:</strong> a sua ficha de treino e os treinos que você marca como feitos, com as cargas que anotar, também são seus dados: servem para o seu personal acompanhar a sua frequência e evolução.</li>
-            <li><strong>Onde ficam:</strong> num banco de dados protegido, com cópia de segurança criptografada.</li>
-            <li><strong>Seus direitos:</strong> pedir correção ou a exclusão completa dos seus dados a qualquer momento, falando com seu personal.</li>
+            <li><strong>Onde ficam:</strong> num banco de dados protegido no Brasil (Supabase, em São Paulo). O site fica no GitHub. Quando há cópia de segurança, ela é sempre criptografada.</li>
+            <li><strong>Por quanto tempo:</strong> enquanto você for aluno do seu personal pelo app. Se pedir a exclusão, tudo é apagado na hora, e as cópias de segurança somem em até 30 dias.</li>
+            <li><strong>Seus direitos:</strong> ver, corrigir, receber uma cópia ou excluir os seus dados a qualquer momento, falando com seu personal.</li>
+            <li><strong>Responsáveis:</strong> o seu personal decide sobre os seus dados; o app é mantido por Fabio Luan.</li>
           </ul>
           <p class="muted pequeno">Versão do termo: <span id="termoVersao"></span></p>
         </section>
@@ -120,7 +122,7 @@
       <main id="principal" class="principal" tabindex="-1"></main>
     </div>
     <main id="areaAluno" class="area-aluno hidden" tabindex="-1"></main>
-    <footer class="rodape">Versão 1.3.0 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
+    <footer class="rodape">Versão 1.3.1 · <button class="link-rodape" type="button" data-sobre>Sobre o app</button></footer>
     <nav id="navAluno" class="nav-aluno hidden" aria-label="Navegação principal">
       <a href="#inicio" data-aba="inicio"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Início</a>
       <a href="#treino" data-aba="treino"><span class="nav-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Treino</a>

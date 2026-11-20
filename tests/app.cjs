@@ -2,9 +2,16 @@
 const assert = require('node:assert/strict');
 const A = require('../app.js');
 const fs = require('node:fs'), path = require('node:path');
-const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-10' };
+const { TERMO_VERSAO } = { TERMO_VERSAO: '2026-11-20' };
 
 assert.equal(A.TERMO_VERSAO, TERMO_VERSAO, 'mesma versão do termo que a função registrar-aluno');
+// Termo do aluno (2026-11-20): diz quem tem acesso técnico, onde ficam os dados, por quanto tempo e quem responde.
+{
+  const termo = (fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').match(/<section id="termoAluno"[\s\S]*?<\/section>/) || [''])[0];
+  for (const trecho of ['acesso técnico', 'São Paulo', 'Por quanto tempo', 'receber uma cópia', 'Responsáveis'])
+    assert.ok(termo.includes(trecho), `termo do aluno cita: ${trecho}`);
+  assert.ok(!termo.includes('Ninguém mais tem acesso'), 'termo do aluno não promete que ninguém mais tem acesso');
+}
 assert.equal(A.hojeISO(new Date(2026, 0, 5)), '2026-01-05');
 assert.equal(A.fmt(1234.5), '1.234,5'); assert.equal(A.fmt(null), '—'); assert.equal(A.fmt(2, 0), '2');
 
