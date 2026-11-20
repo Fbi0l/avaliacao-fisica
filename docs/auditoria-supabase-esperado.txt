@@ -1,0 +1,80 @@
+# Foto APROVADA da configuracao de seguranca do Supabase (scripts/auditoria-supabase.sh).
+# Gerada em 20/11/2026 a partir do projeto oficial (avaliacao-fisica), com a migracao auditoria_leitura.
+# Se uma mudanca de seguranca for INTENCIONAL (tabela, politica, funcao, permissao nova), atualize este arquivo
+# no mesmo envio: bash scripts/auditoria-supabase.sh --gerar > docs/auditoria-supabase-esperado.txt
+# (e recoloque este cabecalho), ou peca ao Claude para gerar pelo conector do Supabase. Linhas com # sao ignoradas.
+chave-auth | alunos.usuario_id | on_delete=set_null
+chave-auth | consentimentos.usuario_id | on_delete=cascade
+chave-auth | convites_aluno.usado_por | on_delete=set_null
+chave-auth | convites_personal.usado_por | on_delete=set_null
+chave-auth | personais.usuario_id | on_delete=cascade
+funcao | cancelar_convite_aluno(p_aluno uuid) | definer=true config=search_path="" executa=authenticated
+funcao | cancelar_convite_personal(p_id uuid) | definer=true config=search_path="" executa=authenticated
+funcao | convite_do_aluno(p_aluno uuid) | definer=true config=search_path="" executa=authenticated
+funcao | criar_convite_aluno(p_aluno uuid) | definer=true config=search_path="" executa=authenticated
+funcao | criar_convite_personal(p_rotulo text) | definer=true config=search_path="" executa=authenticated
+funcao | excluir_aluno(p_aluno uuid) | definer=true config=search_path="" executa=authenticated
+funcao | listar_convites_personal() | definer=true config=search_path="" executa=authenticated
+funcao | meu_papel() | definer=true config=search_path="" executa=authenticated
+funcao | privado.ao_criar_usuario() | definer=true config=search_path="" executa=-
+funcao | privado.blocos_validos(b jsonb) | definer=false config=search_path="" executa=PUBLIC,authenticated
+funcao | privado.dobras_validas(p jsonb) | definer=false config=search_path="" executa=authenticated
+funcao | privado.ficha_bloco_coerente() | definer=false config=search_path="" executa=-
+funcao | privado.forca_valida(p jsonb) | definer=false config=search_path="" executa=authenticated
+funcao | privado.medidas_validas(p jsonb, chaves text[], minimo numeric, maximo numeric) | definer=false config=search_path="" executa=authenticated
+funcao | privado.mensagem_preencher() | definer=true config=search_path="" executa=-
+funcao | privado.meu_aluno_id() | definer=true config=search_path="" executa=authenticated
+funcao | privado.meu_personal_id() | definer=true config=search_path="" executa=authenticated
+funcao | privado.postura_valida(p jsonb) | definer=false config=search_path="" executa=authenticated
+funcao | privado.registro_valido(r jsonb) | definer=false config=search_path="" executa=PUBLIC,authenticated
+funcao | privado.sou_admin() | definer=true config=search_path="" executa=-
+funcao | privado.sou_personal() | definer=true config=search_path="" executa=authenticated
+funcao | privado.testes_valida(p jsonb) | definer=false config=search_path="" executa=authenticated
+funcao | privado.tocar_atualizado_em() | definer=false config=search_path="" executa=-
+funcao | privado.treino_feito_preencher() | definer=true config=search_path="" executa=-
+funcao | privado.treinos_validos(t jsonb) | definer=false config=search_path="" executa=PUBLIC,authenticated
+funcao | rls_auto_enable() | definer=true config=search_path=pg_catalog executa=-
+funcao | sou_administrador() | definer=true config=search_path="" executa=authenticated
+gatilho | alunos :: alunos_atualizado | ativo=true funcao=tocar_atualizado_em
+gatilho | avaliacoes :: avaliacoes_atualizado | ativo=true funcao=tocar_atualizado_em
+gatilho | ciclos :: ciclos_atualizado | ativo=true funcao=tocar_atualizado_em
+gatilho | fichas :: fichas_atualizado | ativo=true funcao=tocar_atualizado_em
+gatilho | fichas :: fichas_bloco_coerente | ativo=true funcao=ficha_bloco_coerente
+gatilho | mensagens :: mensagens_preencher | ativo=true funcao=mensagem_preencher
+gatilho | personais :: personais_atualizado | ativo=true funcao=tocar_atualizado_em
+gatilho | treinos_feitos :: treinos_feitos_preencher | ativo=true funcao=treino_feito_preencher
+permissao-tabela | alunos authenticated | DELETE,INSERT,SELECT
+permissao-tabela | avaliacoes authenticated | DELETE,INSERT,SELECT
+permissao-tabela | ciclos authenticated | DELETE,INSERT,SELECT
+permissao-tabela | consentimentos authenticated | SELECT
+permissao-tabela | fichas authenticated | DELETE,INSERT,SELECT
+permissao-tabela | mensagens authenticated | INSERT,SELECT
+permissao-tabela | personais authenticated | SELECT
+permissao-tabela | treinos_feitos authenticated | DELETE,INSERT,SELECT
+politica | public.alunos :: aluno_ve_a_si | PERMISSIVE SELECT {authenticated} using=(usuario_id = ( SELECT auth.uid() AS uid)) check=-
+politica | public.alunos :: personal_seus_alunos | PERMISSIVE ALL {authenticated} using=(personal_id = ( SELECT auth.uid() AS uid)) check=((personal_id = ( SELECT auth.uid() AS uid)) AND ( SELECT privado.sou_personal() AS sou_personal))
+politica | public.avaliacoes :: aluno_ve_suas_avaliacoes | PERMISSIVE SELECT {authenticated} using=(aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)) check=-
+politica | public.avaliacoes :: personal_avaliacoes | PERMISSIVE ALL {authenticated} using=(personal_id = ( SELECT auth.uid() AS uid)) check=(personal_id = ( SELECT auth.uid() AS uid))
+politica | public.ciclos :: aluno_ve_seus_ciclos | PERMISSIVE SELECT {authenticated} using=(aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)) check=-
+politica | public.ciclos :: personal_ciclos | PERMISSIVE ALL {authenticated} using=(personal_id = ( SELECT auth.uid() AS uid)) check=((personal_id = ( SELECT auth.uid() AS uid)) AND ( SELECT privado.sou_personal() AS sou_personal))
+politica | public.consentimentos :: consentimento_leitura | PERMISSIVE SELECT {authenticated} using=((usuario_id = ( SELECT auth.uid() AS uid)) OR (aluno_id IN ( SELECT a.id FROM alunos a WHERE (a.personal_id = ( SELECT auth.uid() AS uid))))) check=-
+politica | public.fichas :: aluno_ve_suas_fichas | PERMISSIVE SELECT {authenticated} using=(aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)) check=-
+politica | public.fichas :: personal_fichas | PERMISSIVE ALL {authenticated} using=(personal_id = ( SELECT auth.uid() AS uid)) check=((personal_id = ( SELECT auth.uid() AS uid)) AND ( SELECT privado.sou_personal() AS sou_personal))
+politica | public.mensagens :: mensagens_aluno_escreve | PERMISSIVE INSERT {authenticated} using=- check=((aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)) AND (autor = ( SELECT auth.uid() AS uid)) AND (avaliacao_id IS NULL) AND (texto IS NOT NULL))
+politica | public.mensagens :: mensagens_ler | PERMISSIVE SELECT {authenticated} using=((personal_id = ( SELECT auth.uid() AS uid)) OR (aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id))) check=-
+politica | public.mensagens :: mensagens_marcar_lida | PERMISSIVE UPDATE {authenticated} using=((autor <> ( SELECT auth.uid() AS uid)) AND ((personal_id = ( SELECT auth.uid() AS uid)) OR (aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)))) check=((autor <> ( SELECT auth.uid() AS uid)) AND (lida_em IS NOT NULL))
+politica | public.mensagens :: mensagens_personal_escreve | PERMISSIVE INSERT {authenticated} using=- check=((personal_id = ( SELECT auth.uid() AS uid)) AND (autor = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1 FROM alunos a WHERE ((a.id = mensagens.aluno_id) AND (a.personal_id = ( SELECT auth.uid() AS uid)) AND (a.usuario_id IS NOT NULL) AND (NOT a.exemplo)))) AND ((avaliacao_id IS NULL) OR (EXISTS ( SELECT 1 FROM avaliacoes v WHERE ((v.id = mensagens.avaliacao_id) AND (v.aluno_id = mensagens.aluno_id))))))
+politica | public.personais :: personal_edita_a_si | PERMISSIVE UPDATE {authenticated} using=(usuario_id = ( SELECT auth.uid() AS uid)) check=(usuario_id = ( SELECT auth.uid() AS uid))
+politica | public.personais :: personal_ve_a_si | PERMISSIVE SELECT {authenticated} using=((usuario_id = ( SELECT auth.uid() AS uid)) OR (usuario_id = ( SELECT privado.meu_personal_id() AS meu_personal_id))) check=-
+politica | public.treinos_feitos :: aluno_treinos_feitos | PERMISSIVE ALL {authenticated} using=(aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id)) check=(aluno_id = ( SELECT privado.meu_aluno_id() AS meu_aluno_id))
+politica | public.treinos_feitos :: personal_ve_treinos_feitos | PERMISSIVE SELECT {authenticated} using=(personal_id = ( SELECT auth.uid() AS uid)) check=-
+tabela | alunos | rls=true force=false
+tabela | avaliacoes | rls=true force=false
+tabela | ciclos | rls=true force=false
+tabela | consentimentos | rls=true force=false
+tabela | convites_aluno | rls=true force=false
+tabela | convites_personal | rls=true force=false
+tabela | fichas | rls=true force=false
+tabela | mensagens | rls=true force=false
+tabela | personais | rls=true force=false
+tabela | treinos_feitos | rls=true force=false

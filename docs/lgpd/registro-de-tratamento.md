@@ -32,6 +32,13 @@ App **Avaliação Física** — atualizado em 20/11/2026. Revise sempre que entr
 
 O app **não usa** cookies de rastreamento, analytics, pixels de anúncio nem inteligência artificial.
 
+## Segurança (art. 46)
+
+- RLS em todas as tabelas; funções das regras no esquema `privado`; chave secreta só no servidor.
+- Testes a cada envio: regras de acesso (`npm run test:banco`), segurança do site e navegador com acessibilidade.
+- Auditoria semanal da configuração do Supabase com o usuário `auditoria_leitura`, que **não lê nenhum dado** (`AUDITORIA_SUPABASE.md`; começa desligada).
+- Dependabot avisa de atualizações e falhas conhecidas nas bibliotecas de teste e nas ações do GitHub.
+
 ## Direitos dos titulares (art. 18)
 
 - **Correção:** o personal edita os dados do aluno no app.

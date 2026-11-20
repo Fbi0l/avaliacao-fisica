@@ -6,6 +6,9 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 create schema auth;
+-- Storage (só a tabela de buckets): a migração auditoria_leitura lê nome e se é público.
+create schema if not exists storage;
+create table if not exists storage.buckets (id text primary key, public boolean default false);
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now());

@@ -30,7 +30,7 @@ jobs:
       PGSSLMODE: require
       BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -52,7 +52,7 @@ jobs:
         run: bash scripts/backup.sh
 
       - name: Guardar somente os arquivos criptografados por 30 dias
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backup-avaliacao-${{ github.run_id }}
           path: |

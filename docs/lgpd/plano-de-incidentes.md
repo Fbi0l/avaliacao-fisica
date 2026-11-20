@@ -13,6 +13,7 @@ App **Avaliação Física** — atualizado em 20/11/2026.
 - [ ] Se uma conta foi invadida: no Supabase, *Authentication → Users*, encerre as sessões e troque a senha do usuário.
 - [ ] Se uma regra de acesso estava errada: corrija com uma migração nova e rode `npm run test:banco`.
 - [ ] Se necessário, tire o site do ar (*Settings → Pages* no GitHub) até a correção.
+- [ ] Alerta da **Auditoria de seguranca do Supabase** (workflow semanal, quando ligado): veja no resumo o que mudou em relação à foto aprovada e desfaça a mudança se não foi intencional.
 - [ ] **Não apague registros** que mostram o que aconteceu (logs do Supabase em *Logs*, histórico do GitHub).
 
 ## 2. Avaliar (em até 24 horas)

@@ -2,6 +2,12 @@
 
 App para o personal trainer registrar avaliações físicas, acompanhar a evolução dos alunos e, futuramente, montar treinos. O aluno recebe um convite e passa a ver a própria evolução. Site estático (HTML, CSS e JavaScript, sem etapa de build) com Supabase para banco, login e regras de acesso. Funciona no computador e no celular, e pode ser instalado como app.
 
+## Versão 1.3.3 — Nomes acessíveis (axe 4.14)
+
+- A versão nova do verificador de acessibilidade (axe 4.14, trazida pelo Dependabot) passou a exigir que o nome lido pelo leitor de tela contenha o texto visível (WCAG 2.5.3). Corrigido no botão da conta (iniciais + "menu da conta") e na aba Mensagens do aluno (o número de não lidas fica no selo e o resto só para o leitor de tela).
+- Auditoria semanal do Supabase e Dependabot preparados (ver `AUDITORIA_SUPABASE.md`).
+- Guia de uso revisado, sem mudança de passos.
+
 ## Versão 1.3.2 — Testes no navegador e acessibilidade
 
 - **Teste no navegador (automático):** a cada envio ao GitHub, o workflow **Teste no navegador** abre o app num Chrome de teste com um Supabase **falso** (`tests/navegador/supabase-falso.js`, sem internet e sem dados reais; as avaliações são as da Mariana de exemplo) e confere a entrada, a senha errada, o convite com o termo dos dados de saúde, todas as telas do personal e do aluno, no computador e no celular, sem erro de JavaScript e sem rolagem lateral. Também roda o **axe** e falha com problema de acessibilidade sério ou crítico (WCAG 2.2 AA). Os prints ficam nos artefatos do workflow. No computador: `npm install`, `npx playwright install chromium` e `npm run test:navegador`.
