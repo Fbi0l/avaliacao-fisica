@@ -1,7 +1,7 @@
 // Cadastro do aluno por convite, com banco e Auth simulados (sem rede).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { tratarCadastro, validarSenha, senhaVazada, hashCodigo, TERMO_VERSAO, TERMO_PERSONAL_VERSAO } from '../supabase/functions/registrar-aluno/cadastro.js';
+import { tratarCadastro, validarSenha, senhaVazada, hashCodigo, TERMO_VERSAO, TERMO_PERSONAL_VERSAO, emailJaExiste } from '../supabase/functions/registrar-aluno/cadastro.js';
 
 const sha = s => createHash('sha256').update(s).digest('hex');
 const CODIGO = 'A'.repeat(20) + '_-' + 'b9'.repeat(10) + 'x';
@@ -37,7 +37,8 @@ function ambiente({ falharCriacao = false, atraso = 0, falharConsentimento = fal
       createUser: async ({ email, password, email_confirm }) => {
         await new Promise(r => setTimeout(r, atraso));
         assert.equal(email_confirm, true);
-        if (falharCriacao || usuarios.some(u => u.email === email)) return { data: null, error: { message: 'A user with this email address has already been registered' } };
+        if (usuarios.some(u => u.email === email)) return { data: null, error: { message: 'A user with this email address has already been registered', status: 422, code: 'email_exists' } };
+        if (falharCriacao) return { data: null, error: { message: 'Database error creating new user', status: 500 } };
         const user = { id: 'novo-' + usuarios.length, email, password }; usuarios.push(user); return { data: { user }, error: null };
       },
       deleteUser: async id => { const i = usuarios.findIndex(u => u.id === id); if (i >= 0) usuarios.splice(i, 1); return { error: null }; }
@@ -110,11 +111,18 @@ assert.equal(amb.db.convites_aluno[0].usado_por, nova.id);
 r = await rodar(pedir({ ...base, email: 'outra@x.com' }), amb);
 assert.deepEqual([r.status, r.corpo.codigo_erro], [410, 'expirado'], 'convite não serve de novo');
 
-// E-mail já existente: resposta genérica e convite devolvido
+// E-mail já existente: resposta genérica e convite CANCELADO (não serve para testar outros e-mails; auditoria 23/11/2026)
 amb = ambiente();
 r = await rodar(pedir({ ...base, email: 'ja@existe.com' }), amb);
 assert.equal(r.status, 400); assert.ok(!/existe|registrad|cadastrad/i.test(r.corpo.erro), 'não revela que o e-mail existe');
-assert.equal((await rodar(pedir(base), amb)).status, 201, 'convite devolvido após a falha');
+assert.ok(amb.db.convites_aluno[0].cancelado_em, 'convite cancelado'); assert.equal(amb.db.convites_aluno[0].usado_em, null);
+assert.equal((await rodar(pedir(base), amb)).status, 410, 'o mesmo convite não serve para outro e-mail');
+// Outra falha do Auth (não é e-mail repetido): mesma resposta, e o convite volta a valer
+amb = ambiente({ falharCriacao: true });
+const rFalha = await rodar(pedir(base), amb);
+assert.deepEqual([rFalha.status, rFalha.corpo.erro], [400, r.corpo.erro], 'mesma resposta do e-mail repetido');
+assert.equal(amb.db.convites_aluno[0].usado_em, null); assert.equal(amb.db.convites_aluno[0].cancelado_em, null);
+assert.equal(emailJaExiste({ code: 'email_exists' }), true); assert.equal(emailJaExiste({ message: 'Database error' }), false);
 
 // Falha ao registrar o aceite: conta apagada, ficha solta e convite devolvido
 amb = ambiente({ falharConsentimento: true });
@@ -157,10 +165,11 @@ assert.equal((await rodar(pedir({ acao: 'apagar', codigo: CODIGO }), amb)).statu
   assert.equal(a2.db.convites_personal[0].usado_por, novo.id);
   assert.equal(a2.db.alunos.length, 1, 'não mexe em alunos'); assert.equal(a2.db.consentimentos.length, 0);
   assert.equal((await rodar(pedir({ ...baseP, email: 'outro@x.com' }), a2)).status, 410, 'uso único');
-  // E-mail que já tem conta: convite volta a valer
+  // E-mail que já tem conta: convite cancelado, não serve para testar outro e-mail
   a2 = ambiente();
   r2 = await rodar(pedir({ ...baseP, email: 'ja@existe.com' }), a2);
-  assert.equal(r2.status, 400); assert.equal(a2.db.convites_personal[0].usado_em, null);
+  assert.equal(r2.status, 400); assert.equal(a2.db.convites_personal[0].usado_em, null); assert.ok(a2.db.convites_personal[0].cancelado_em);
+  assert.equal((await rodar(pedir({ ...baseP, email: 'outro@x.com' }), a2)).status, 410, 'convite cancelado');
   // Falha ao gravar a ficha: apaga a conta e devolve o convite
   a2 = ambiente({ falharPersonal: true });
   r2 = await rodar(pedir(baseP), a2);

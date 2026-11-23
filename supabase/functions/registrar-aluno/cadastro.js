@@ -7,7 +7,9 @@
 // - O aluno precisa aceitar o termo de uso dos dados de saúde (LGPD); o aceite fica registrado com a versão.
 // - Se qualquer passo falhar depois de criar a conta, a conta é apagada e o convite volta a valer.
 // - A chave de serviço (service_role) só existe aqui no servidor, nunca no site.
-// - A resposta não revela se um e-mail já tem conta. Senhas vazadas são recusadas (k-anonimato).
+// - A resposta não revela se um e-mail já tem conta, e um convite só serve para UMA tentativa com e-mail
+//   já cadastrado: ele é cancelado, para ninguém testar vários e-mails com o mesmo link (auditoria 23/11/2026).
+//   Senhas vazadas são recusadas (k-anonimato).
 // Testado em tests/registrar-aluno.mjs.
 
 export const TERMO_VERSAO = '2026-11-20';
@@ -25,6 +27,12 @@ function cabecalhos(origem) {
     h['Access-Control-Max-Age'] = '600';
   }
   return h;
+}
+/** O Auth recusou porque o e-mail já tem conta? (GoTrue: 422 email_exists) */
+export function emailJaExiste(erro) {
+  if (!erro) return false;
+  if (erro.code === 'email_exists' || erro.code === 'user_already_exists') return true;
+  return /already (been )?registered|already exists/i.test(String(erro.message || ''));
 }
 const resposta = (origem, status, corpo) => new Response(JSON.stringify(corpo), { status, headers: cabecalhos(origem) });
 
@@ -107,10 +115,12 @@ export async function tratarCadastro(req, { env, criarCliente, fetchFn = fetch }
       // 2) Cria a conta já confirmada (o convite comprova o acesso).
       const { data: criado, error: errC } = await admin.auth.admin.createUser({ email, password: senha, email_confirm: true });
       if (errC || !criado?.user) {
-        await devolverConvite();
+        // E-mail já cadastrado: o convite é cancelado (não volta a valer), sem dizer o motivo.
+        if (emailJaExiste(errC)) await admin.from('convites_aluno').update({ usado_em: null, cancelado_em: agoraIso }).eq('id', idConvite);
+        else await devolverConvite();
         const msg = String(errC?.message || '').toLowerCase();
         if (msg.includes('password') && (msg.includes('weak') || msg.includes('short'))) return resposta(origem, 400, { erro: 'Senha fraca demais. Use uma senha mais longa e variada.' });
-        return resposta(origem, 400, { erro: 'Não foi possível criar o acesso com este e-mail. Confira o e-mail ou fale com seu personal.' });
+        return resposta(origem, 400, { erro: 'Não foi possível criar o acesso com este e-mail. Confira o e-mail; se precisar, peça um novo convite ao seu personal.' });
       }
       const idUsuario = criado.user.id;
 
@@ -178,10 +188,12 @@ async function cadastroPersonal({ corpo, origem, admin, hash, agoraIso, fetchFn 
     // 2) Conta já confirmada (o convite comprova o acesso).
     const { data: criado, error: errC } = await admin.auth.admin.createUser({ email, password: senha, email_confirm: true });
     if (errC || !criado?.user) {
-      await devolverConvite();
+      // E-mail já cadastrado: o convite é cancelado (não volta a valer), sem dizer o motivo.
+      if (emailJaExiste(errC)) await admin.from('convites_personal').update({ usado_em: null, cancelado_em: agoraIso }).eq('id', idConvite);
+      else await devolverConvite();
       const msg = String(errC?.message || '').toLowerCase();
       if (msg.includes('password') && (msg.includes('weak') || msg.includes('short'))) return resposta(origem, 400, { erro: 'Senha fraca demais. Use uma senha mais longa e variada.' });
-      return resposta(origem, 400, { erro: 'Não foi possível criar o acesso com este e-mail. Confira o e-mail ou fale com quem convidou você.' });
+      return resposta(origem, 400, { erro: 'Não foi possível criar o acesso com este e-mail. Confira o e-mail; se precisar, peça um novo convite a quem convidou você.' });
     }
     const idUsuario = criado.user.id;
 

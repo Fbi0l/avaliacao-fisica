@@ -31,6 +31,8 @@ confere "usuário sem cadastro não tem papel" "$(como authenticated $P2 "select
 
 ALUNA="$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento) values ('Mariana Costa','F','1994-03-12') returning id")"
 [[ "$ALUNA" =~ ^[0-9a-f-]{36}$ ]] && ok "personal cadastra aluno" || erro "cadastrar aluno" "$ALUNA"
+recusa "personal não liga a ficha ao login de outra conta (auditoria 23/11/2026)" "$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento, usuario_id) values ('X','M','1990-01-01','$AL') returning id")"
+recusa "personal não grava o dono de outra ficha" "$(como authenticated $P1 "insert into public.alunos (nome, sexo, nascimento, personal_id) values ('X','M','1990-01-01','$P2') returning id")"
 recusa "quem não é personal não cadastra aluno" "$(como authenticated $P2 "insert into public.alunos (nome, sexo, nascimento) values ('X','M','1990-01-01') returning id")"
 recusa "visitante sem login não lê alunos" "$(como anon 00000000-0000-0000-0000-000000000000 'select count(*) from public.alunos')"
 

@@ -1,5 +1,6 @@
 # Foto APROVADA da configuracao de seguranca do Supabase (scripts/auditoria-supabase.sh).
 # Gerada em 20/11/2026 a partir do projeto oficial (avaliacao-fisica), com a migracao auditoria_leitura.
+# Atualizada em 23/11/2026 (migracao alunos_insert_sem_login, auditoria de codigo): conferida por hash no projeto oficial.
 # Se uma mudanca de seguranca for INTENCIONAL (tabela, politica, funcao, permissao nova), atualize este arquivo
 # no mesmo envio: bash scripts/auditoria-supabase.sh --gerar > docs/auditoria-supabase-esperado.txt
 # (e recoloque este cabecalho), ou peca ao Claude para gerar pelo conector do Supabase. Linhas com # sao ignoradas.
@@ -43,7 +44,7 @@ gatilho | fichas :: fichas_bloco_coerente | ativo=true funcao=ficha_bloco_coeren
 gatilho | mensagens :: mensagens_preencher | ativo=true funcao=mensagem_preencher
 gatilho | personais :: personais_atualizado | ativo=true funcao=tocar_atualizado_em
 gatilho | treinos_feitos :: treinos_feitos_preencher | ativo=true funcao=treino_feito_preencher
-permissao-tabela | alunos authenticated | DELETE,INSERT,SELECT
+permissao-tabela | alunos authenticated | DELETE,SELECT
 permissao-tabela | avaliacoes authenticated | DELETE,INSERT,SELECT
 permissao-tabela | ciclos authenticated | DELETE,INSERT,SELECT
 permissao-tabela | consentimentos authenticated | SELECT
